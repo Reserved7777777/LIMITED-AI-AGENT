@@ -35,17 +35,10 @@ body {
 .idx-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
 .idx-card {
   background:var(--card); border:1px solid var(--border);
-  border-radius:6px; padding:10px 12px; display:flex; flex-direction:column;
-  text-decoration:none; color:var(--text); transition:background .15s; cursor:pointer;
-  min-height:70px;
-}
-.idx-card:hover { background:var(--card2); }
-.idx-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:6px; padding:6px 8px; display:grid;
+  border-radius:6px; padding:7px 9px; display:grid;
   grid-template-columns:auto 1fr; align-items:center;
   text-decoration:none; color:var(--text);
-  transition:background .15s; cursor:pointer; height:70px; gap:8px;
+  transition:background .15s; cursor:pointer; height:68px; gap:6px;
 }
 .idx-card:hover { background:var(--card2); }
 .idx-card .info { display:flex; flex-direction:column; justify-content:center; white-space:nowrap; }
@@ -112,7 +105,7 @@ body {
 }
 .tbl-row:hover { background:var(--card2); }
 .tbl-row:last-child { border-bottom:none; }
-.tbl-row > span { flex-shrink:0;   font-size:12px; }
+.tbl-row > span { flex-shrink:0; font-size:12px; white-space:nowrap; }
 .tbl-row .s-sym {  font-family:Verdana; color:var(--link); }
 .tbl-row .s-name { font-family:"Microsoft YaHei","Noto Sans SC","PingFang SC",sans-serif; font-size:11px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tbl-row .s-last { font-weight:600; }
@@ -168,9 +161,17 @@ body {
 
 @media (max-width:768px) {
   .idx-row { grid-template-columns:repeat(2,1fr); }
+  .idx-card { height:62px; padding:5px 7px; gap:4px; }
+  .idx-card .info .price { font-size:12px; }
+  .idx-card .info .change { font-size:9px; }
+  .idx-card .chart svg { height:36px; }
   .cfx-grid { grid-template-columns:repeat(2,1fr); }
   .events { grid-template-columns:repeat(2,1fr); }
   .col-amt, .col-cap, .col-vol { display:none; }
+  .col-chg { display:none; }
+  .col-tag { width:120px; }
+  .tbl-row { padding:7px 10px; }
+  .table-hd { padding:6px 10px; }
 }
 </style>
 </head>
