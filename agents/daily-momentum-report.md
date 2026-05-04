@@ -49,7 +49,9 @@
 | 经济日历 | Finnhub Economic Calendar / `web_search` |
 | 美股隔夜报价（AAPL/MSFT/AMZN/TSLA） | Finnhub Quote |
 
-#### 美股报告数据（21:00）
+#### 美股报告数据（22:30）
+
+⚠️ 此时美股已开盘约1小时，所有价格数据必须是今日实时数据（截至22:30 CST），不得使用前日收盘数据。
 
 | 数据项 | 来源 |
 |--------|------|
@@ -90,9 +92,9 @@
 
 | 层级 | A 股晨报 08:30 | 美股晚报 21:00 |
 |------|----------------|----------------|
-| 🔥 高位动量 | A股6只 + 美股4只 | 美股4只 + A股ETF 6只 |
-| 📊 中位动量 | A股6只 + 美股4只 | 美股4只 + A股ETF 6只 |
-| 🌱 低位动量 | A股6只 + 美股4只 | 美股4只 + A股ETF 6只 |
+| 🔥 高位动量 | A股6只（用于文本报告） | 美股4只（写入 JSON tiers） |
+| 📊 中位动量 | A股6只（用于文本报告） | 美股4只（写入 JSON tiers） |
+| 🌱 低位动量 | A股6只（用于文本报告） | 美股4只（写入 JSON tiers） |
 
 5% = 单日收益目标，非仓位上限。同层级按置信度排序。
 
@@ -118,17 +120,7 @@
 - 关键价位：阻力位 XXX，支撑位 XXX
 ```
 
-**ETF 版（美股晚报中的 A 股部分）**：
-```
-1）证券编号 - ETF全称
-- 证券编号：510300
-- ETF全称：华夏沪深300ETF
-- 基金公司：华夏基金
-- 动量层级：高位 / 中位 / 低位
-- 方向判断：看多 / 中性 / 谨慎
-- 选择理由：板块动量 + 资金流向 + 技术形态
-- 参考价位：当前价 XXX，趋势参考 XXX
-```
+**注意**：写入 JSON `tiers` 数组时，永远只生成 **3 个条目**（高位/中位/低位各一个）。每个条目的 `stocks` 数组包含该层级全部股票，**同一层级所有股票合并在一个数组内**，不要按类型拆分成多个数组。
 
 #### 格式强制规则
 
@@ -162,7 +154,7 @@
 #### 5.1 准备数据文件
 用 `write` 工具将报告数据保存为 JSON 文件到 `/tmp/report-data-YYYY-MM-DD.json`
 
-JSON 格式（indices 中 SH/SZ/CY= A 股指数, HS=黄金/美元）：
+JSON 格式（indices 中 SH/SZ/CY= A 股指数, HK=恒生科技）：
 ```json
 {
   "status": "美股盘前",
@@ -174,7 +166,7 @@ JSON 格式（indices 中 SH/SZ/CY= A 股指数, HS=黄金/美元）：
     "SH": {"price": 4112.16, "change": 4.64, "chg_pct": 0.11},
     "SZ": {"price": 15107.55, "change": -13.37, "chg_pct": -0.09},
     "CY": {"price": 3677.15, "change": -10.02, "chg_pct": -0.27},
-    "HS": {"price": 23180.50, "change": 156.80, "chg_pct": 0.68}
+    "HK": {"price": 6934.50, "change": 125.80, "chg_pct": 1.85}
   },
   "stance_cn": "保守买入 50%",
   "stance_us": "激进买入 60%",
@@ -240,3 +232,26 @@ python3 build_report.py --date YYYY-MM-DD --template report-template.html --outp
 9. **ETF 合规**：6 位证券编号 + 基金公司全称
 10. **非交易日跳过**：直接终止
 11. **Finnhub**：仅用于 US 个股 Quote / News / Economic Calendar，不可用部分回退 Yahoo Finance
+
+## 数据源变更（2026-05-04）
+
+### 废弃的数据源（不可用）
+- ❌ Yahoo Finance 网页抓取 — 服务器IP被限流，返回过期数据
+- ❌ Yahoo Finance API — 同样被限流
+
+### 新的数据源（已验证可用）
+| 数据类型 | 数据源 | 获取方式 |
+|----------|--------|----------|
+| US 个股实时报价 | Finnhub Quote API | `fetch_market_data.py` 自动调用 |
+| US 指数 (SPX/NDX/DJI) | Finnhub → ETF代理(SPY/QQQ/DIA) + 换算 | `fetch_market_data.py` |
+| VIX | 从SPX涨跌估算 | `fetch_market_data.py` |
+| 黄金/原油/布伦特 | Finnhub → ETF(GLD/USO/BNO) + 换算 | `fetch_market_data.py` |
+| A 股指数 | 腾讯财经 kline API | `fetch_market_data.py` |
+| 恒生科技 | 腾讯实时行情 qt.gtimg.cn | `fetch_market_data.py` |
+| 热点/催化 | `web_search` | Marcus 自行搜索 |
+
+### 推荐工作流程
+1. 运行 `python3 /root/.openclaw/workspace/fetch_market_data.py` 获取基础市场数据
+2. 读取 `/tmp/report-data-$(date +%Y-%m-%d).json` 获得实时指数 + 商品数据
+3. 补充个股 tier 数据、分析文案、风险提示、事件日历到 JSON
+4. 运行 build_report.py 生成 HTML
