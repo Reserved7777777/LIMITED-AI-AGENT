@@ -449,23 +449,13 @@ def build_report(date_str, template_path, output_path, data_json=None):
     sc = report_data.get('stance_cn_color', 'var(--orange)')
     su = report_data.get('stance_us_color', 'var(--green)')
     
-    # Emoji fallback: use Marcus-provided emoji, or auto-pick by percentage
-    def _stance_emoji(pct):
-        if pct < 20:  return '\u274C'        # ❌
-        if pct < 40:  return '\u26A0\uFE0F'  # ⚠️
-        if pct <= 60: return '\u26AA'         # ⚪
-        if pct <= 80: return '\U0001F4C8'    # 📈
-        return '\U0001F680'                   # 🚀
-    emoji_cn = report_data.get('stance_cn_emoji', '') or _stance_emoji(stance_cn_pct)
-    emoji_us = report_data.get('stance_us_emoji', '') or _stance_emoji(stance_us_pct)
-    
     new_stance = f'''<div class="stance-bar">
     <div class="stance-item">
-      <div class="info"><div class="lbl">A股立场 <span class="emoji">{emoji_cn}</span></div><div class="val" style="color:{sc};">{stance_cn}</div></div>
+      <div class="info"><div class="lbl">A股立场</div><div class="val" style="color:{sc};">{stance_cn}</div></div>
       <div class="mbar"><div class="fill" style="width:{stance_cn_pct}%;background:{sc};"></div></div>
     </div>
     <div class="stance-item">
-      <div class="info"><div class="lbl">美股立场 <span class="emoji">{emoji_us}</span></div><div class="val" style="color:{su};">{stance_us}</div></div>
+      <div class="info"><div class="lbl">美股立场</div><div class="val" style="color:{su};">{stance_us}</div></div>
       <div class="mbar"><div class="fill" style="width:{stance_us_pct}%;background:{su};"></div></div>
     </div>
   </div>'''

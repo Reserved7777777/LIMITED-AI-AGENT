@@ -61,7 +61,6 @@ body {
 .stance-item .info { flex:1; }
 .stance-item .info .lbl { font-size:10px; color:var(--dim); font-weight:500; }
 .stance-item .info .val {   font-size:13px; }
-.stance-item .emoji { font-size:14px; line-height:1; font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif; }
 .stance-item .mbar { width:60px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
 .stance-item .mbar .fill { height:100%; border-radius:2px; }
 
@@ -81,17 +80,17 @@ body {
   display:flex; padding:8px 14px; background:var(--card2);
   border-bottom:1px solid var(--border); font-size:10px; color:var(--dim); font-weight:500;
 }
-.table-hd > span { flex-shrink:0; }
+.table-hd > span { flex-shrink:0; text-align:left; }
 .col-seq { width:32px; }
 .col-sym { width:60px; }
 .col-name { width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.col-last { width:88px; text-align:right; }
-.col-chg { width:88px; text-align:right; }
-.col-chgp { width:88px; text-align:right; }
-.col-vol { width:88px; text-align:right; }
-.col-amt { width:88px; text-align:right; }
-.col-cap { width:88px; text-align:right; }
-.col-tag { width:200px; text-align:right; }
+.col-last { width:88px; }
+.col-chg { width:88px; }
+.col-chgp { width:88px; }
+.col-vol { width:88px; }
+.col-amt { width:88px; }
+.col-cap { width:88px; }
+.col-tag { width:200px; }
 .tb-tag { display:inline-block; padding:2px 7px; border-radius:3px; font-size:10px; font-weight:600; }
 .tb-high { background:rgba(0,200,83,0.10); color:var(--green); }
 .tb-mid { background:rgba(255,105,0,0.10); color:var(--orange); }
@@ -118,7 +117,7 @@ body {
   display:flex; align-items:center; gap:6px; padding:5px 0;
   font-size:12px; font-weight:600; color:var(--sub);
 }
-.sec-label .dot-tier { width:7px; height:7px; border-radius:50%; }
+.sec-label .dot-tier { width:10px; display:inline-block; }
 .sec-label .right { margin-left:auto; font-size:10px; color:var(--dim); font-weight:400; }
 
 /* COMMODITY / FX */
@@ -280,11 +279,11 @@ body {
   <!-- STANCE -->
   <div class="stance-bar">
     <div class="stance-item">
-      <div class="info"><div class="lbl">A股立场 <span class="emoji">⚪️</span></div><div class="val" style="color:var(--orange);">持币观望 45%</div></div>
+      <div class="info"><div class="lbl">A股立场</div><div class="val" style="color:var(--orange);">持币观望 45%</div></div>
       <div class="mbar"><div class="fill" style="width:45%;background:var(--orange);"></div></div>
     </div>
     <div class="stance-item">
-      <div class="info"><div class="lbl">美股立场 <span class="emoji">⚪️</span></div><div class="val" style="color:var(--green);">保守买入 55%</div></div>
+      <div class="info"><div class="lbl">美股立场</div><div class="val" style="color:var(--green);">保守买入 55%</div></div>
       <div class="mbar"><div class="fill" style="width:72%;background:var(--green);"></div></div>
     </div>
   </div>
@@ -297,7 +296,7 @@ body {
 
   <!-- ===== TIER 1 ===== -->
   <div class="sec-label">
-    <span class="dot-tier" style="background:var(--green);"></span>
+    <span class="dot-tier">&nbsp;</span>
     <span>🔥 高位动量 · 主升突破</span>
     <span class="right"><span class="tier-sub tier-sub-h">趋势延续</span></span>
   </div>
@@ -350,7 +349,7 @@ body {
 
   <!-- ===== TIER 2 ===== -->
   <div class="sec-label">
-    <span class="dot-tier" style="background:var(--orange);"></span>
+    <span class="dot-tier">&nbsp;</span>
     <span>📊 中位动量 · 量价配合</span>
     <span class="right"><span class="tier-sub tier-sub-m">低位启动</span></span>
   </div>
@@ -390,7 +389,7 @@ body {
 
   <!-- ===== TIER 3 ===== -->
   <div class="sec-label">
-    <span class="dot-tier" style="background:var(--link);"></span>
+    <span class="dot-tier">&nbsp;</span>
     <span>🌱 低位价值 · 潜在催化</span>
     <span class="right"><span class="tier-sub tier-sub-l">等待催化</span></span>
   </div>
@@ -430,6 +429,7 @@ body {
 
   <!-- ===== COMMODITY & FX ===== -->
   <div class="sec-label">
+    <span class="dot-tier">&nbsp;</span>
     <span>💎 黄金 · 原油 · 美元</span>
   </div>
   <div class="cfx-grid">
