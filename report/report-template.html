@@ -15,7 +15,7 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family: "Inter", "Noto Sans SC", -apple-system, sans-serif;
+  font-family: "Inter", "Noto Sans SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", -apple-system, sans-serif;
   background: var(--bg); color: var(--text);
   padding: 12px; -webkit-font-smoothing: antialiased;
   font-size: 13px;
@@ -58,10 +58,10 @@ body {
   flex:1; background:var(--card); border:1px solid var(--border);
   border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;
 }
-.stance-item .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 .stance-item .info { flex:1; }
 .stance-item .info .lbl { font-size:10px; color:var(--dim); font-weight:500; }
 .stance-item .info .val {   font-size:13px; }
+.stance-item .emoji { font-size:14px; line-height:1; font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif; }
 .stance-item .mbar { width:60px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
 .stance-item .mbar .fill { height:100%; border-radius:2px; }
 
@@ -74,7 +74,9 @@ body {
 .insight .label {   font-size:10px; color:var(--orange); white-space:nowrap; padding:1px 5px; background:rgba(255,105,0,0.08); border-radius:2px; }
 
 /* TABLE */
-.table-wrap { background:var(--card); border:1px solid var(--border); border-radius:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:10px; }
+.table-wrap { border:1px solid var(--border); border-radius:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-bottom:10px; }
+.table-wrap::-webkit-scrollbar { display:none; }
+.tb-scroll { display:flex; flex-direction:column; min-width:fit-content; background:var(--card); }
 .table-hd {
   display:flex; padding:8px 14px; background:var(--card2);
   border-bottom:1px solid var(--border); font-size:10px; color:var(--dim); font-weight:500;
@@ -102,6 +104,7 @@ body {
 .tbl-row {
   display:flex; align-items:center; padding:9px 14px; text-decoration:none; color:var(--text);
   border-bottom:1px solid var(--border); transition:background .12s;
+  background:var(--card);
 }
 .tbl-row:hover { background:var(--card2); }
 .tbl-row:last-child { border-bottom:none; }
@@ -277,13 +280,11 @@ body {
   <!-- STANCE -->
   <div class="stance-bar">
     <div class="stance-item">
-      <div class="dot" style="background:var(--orange);"></div>
-      <div class="info"><div class="lbl">A股立场</div><div class="val" style="color:var(--orange);">持币观望</div></div>
+      <div class="info"><div class="lbl">A股立场 <span class="emoji">⚪️</span></div><div class="val" style="color:var(--orange);">持币观望 45%</div></div>
       <div class="mbar"><div class="fill" style="width:45%;background:var(--orange);"></div></div>
     </div>
     <div class="stance-item">
-      <div class="dot" style="background:var(--green);"></div>
-      <div class="info"><div class="lbl">美股立场</div><div class="val" style="color:var(--green);">保守买入 55%</div></div>
+      <div class="info"><div class="lbl">美股立场 <span class="emoji">⚪️</span></div><div class="val" style="color:var(--green);">保守买入 55%</div></div>
       <div class="mbar"><div class="fill" style="width:72%;background:var(--green);"></div></div>
     </div>
   </div>
@@ -301,6 +302,7 @@ body {
     <span class="right"><span class="tier-sub tier-sub-h">趋势延续</span></span>
   </div>
   <div class="table-wrap">
+    <div class="tb-scroll">
     <div class="table-hd">
       <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
       <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
@@ -343,7 +345,8 @@ body {
       <span class="col-cap" style="color:var(--dim);font-size:11px;">2560亿</span>
       <span class="col-tag"><span class="tb-tag" style="color:var(--dim);font-weight:400;">回调低吸</span></span>
     </a>
-  </div>
+  
+  </div></div>
 
   <!-- ===== TIER 2 ===== -->
   <div class="sec-label">
@@ -352,6 +355,7 @@ body {
     <span class="right"><span class="tier-sub tier-sub-m">低位启动</span></span>
   </div>
   <div class="table-wrap">
+    <div class="tb-scroll">
     <div class="table-hd">
       <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
       <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
@@ -381,7 +385,8 @@ body {
       <span class="col-cap" style="color:var(--dim);font-size:11px;">1.29万亿</span>
       <span class="col-tag"><span class="tb-tag tb-mid">AI广告</span></span>
     </a>
-  </div>
+  
+  </div></div>
 
   <!-- ===== TIER 3 ===== -->
   <div class="sec-label">
@@ -390,6 +395,7 @@ body {
     <span class="right"><span class="tier-sub tier-sub-l">等待催化</span></span>
   </div>
   <div class="table-wrap">
+    <div class="tb-scroll">
     <div class="table-hd">
       <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
       <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
@@ -419,7 +425,8 @@ body {
       <span class="col-cap" style="color:var(--dim);font-size:11px;">1120亿</span>
       <span class="col-tag"><span class="tb-tag tb-low">订单催化</span></span>
     </a>
-  </div>
+  
+  </div></div>
 
   <!-- ===== COMMODITY & FX ===== -->
   <div class="sec-label">

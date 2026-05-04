@@ -252,12 +252,14 @@ def build_tier_table(tier_data, tb_cls='tb-high'):
     </a>''')
     
     return f'''<div class="table-wrap">
+    <div class="tb-scroll">
     <div class="table-hd">
       <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
       <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
       <span class="col-vol">成交量</span><span class="col-amt">成交额</span><span class="col-cap">总市值</span><span class="col-tag"></span>
     </div>
     {'\n    '.join(rows)}
+  </div>
   </div>'''
 
 # ============================================================
@@ -447,15 +449,23 @@ def build_report(date_str, template_path, output_path, data_json=None):
     sc = report_data.get('stance_cn_color', 'var(--orange)')
     su = report_data.get('stance_us_color', 'var(--green)')
     
+    # Emoji fallback: use Marcus-provided emoji, or auto-pick by percentage
+    def _stance_emoji(pct):
+        if pct < 20:  return '\u274C'        # ❌
+        if pct < 40:  return '\u26A0\uFE0F'  # ⚠️
+        if pct <= 60: return '\u26AA'         # ⚪
+        if pct <= 80: return '\U0001F4C8'    # 📈
+        return '\U0001F680'                   # 🚀
+    emoji_cn = report_data.get('stance_cn_emoji', '') or _stance_emoji(stance_cn_pct)
+    emoji_us = report_data.get('stance_us_emoji', '') or _stance_emoji(stance_us_pct)
+    
     new_stance = f'''<div class="stance-bar">
     <div class="stance-item">
-      <div class="dot" style="background:{sc};"></div>
-      <div class="info"><div class="lbl">风险偏好</div><div class="val" style="color:{sc};">{stance_cn}</div></div>
+      <div class="info"><div class="lbl">A股立场 <span class="emoji">{emoji_cn}</span></div><div class="val" style="color:{sc};">{stance_cn}</div></div>
       <div class="mbar"><div class="fill" style="width:{stance_cn_pct}%;background:{sc};"></div></div>
     </div>
     <div class="stance-item">
-      <div class="dot" style="background:{su};"></div>
-      <div class="info"><div class="lbl">美股立场</div><div class="val" style="color:{su};">{stance_us}</div></div>
+      <div class="info"><div class="lbl">美股立场 <span class="emoji">{emoji_us}</span></div><div class="val" style="color:{su};">{stance_us}</div></div>
       <div class="mbar"><div class="fill" style="width:{stance_us_pct}%;background:{su};"></div></div>
     </div>
   </div>'''
