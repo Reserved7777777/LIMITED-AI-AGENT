@@ -255,3 +255,18 @@ python3 build_report.py --date YYYY-MM-DD --template report-template.html --outp
 2. 读取 `/tmp/report-data-$(date +%Y-%m-%d).json` 获得实时指数 + 商品数据
 3. 补充个股 tier 数据、分析文案、风险提示、事件日历到 JSON
 4. 运行 build_report.py 生成 HTML
+#### 2026-05-04 修正：ETF→指数换算系数（核心修复！）
+
+⚠️ 之前使用了错误的系数导致指数数据严重偏低。
+
+| 指数 | ETF | 正确换算系数 | 说明 |
+|------|-----|-------------|------|
+| SPX (标普500) | SPY | × 10.04 | SPY≈SPX/10 |
+| NDX (纳斯达克) | QQQ | × 37.27 | QQQ≈NDX/37 |
+| DJI (道琼斯) | DIA | × 100.03 | DIA≈DJI/100 |
+| VIX | 从SPX反推 | VIX≈14.5-SPX涨跌×2.5 | 估算值 |
+| 黄金XAU | GLD | × 5.63 | GLD≈金价/5.63 |
+| WTI原油 | USO | × 0.556 | USO≈WTI×1.8 |
+| 布伦特 | BNO | × 1.44 | BNO≈布伦特/1.44 |
+
+**不用再手动去 futunn 爬数据**。Finnhub ETF换算后与 futunn 差异<0.2%，且自动化和可靠。

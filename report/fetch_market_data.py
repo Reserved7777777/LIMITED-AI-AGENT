@@ -44,7 +44,7 @@ def fetch_all():
     # QQQ ≈ NDX/32 → NDX ≈ QQQ * 31.95
     # DIA ≈ DJI/90 → DJI ≈ DIA * 89.8
     # ========================
-    etf_map = {'SPX': ('SPY', 7.66), 'NDX': ('QQQ', 31.95), 'DJI': ('DIA', 89.8)}
+    etf_map = {'SPX': ('SPY', 10.04), 'NDX': ('QQQ', 37.27), 'DJI': ('DIA', 100.03)}
     indices = {}
     
     for idx, (etf, mult) in etf_map.items():
