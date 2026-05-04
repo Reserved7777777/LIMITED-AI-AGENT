@@ -19,6 +19,7 @@ body {
   background: var(--bg); color: var(--text);
   padding: 12px; -webkit-font-smoothing: antialiased;
   font-size: 13px;
+  -webkit-overflow-scrolling:touch;
 }
 .container { max-width: 960px; margin: 0 auto; }
 
@@ -39,6 +40,7 @@ body {
   grid-template-columns:auto 1fr; align-items:center;
   text-decoration:none; color:var(--text);
   transition:background .15s; cursor:pointer; height:68px; gap:6px;
+  -webkit-transform:translateZ(0); transform:translateZ(0);
 }
 .idx-card:hover { background:var(--card2); }
 .idx-card .info { display:flex; flex-direction:column; justify-content:center; white-space:nowrap; }
@@ -47,7 +49,7 @@ body {
 .idx-card .info .change { font-weight:600; font-size:10px; margin-top:1px; }
 .idx-card .info .change .sub2 { font-size:9px; color:var(--dim); margin-left:2px; }
 .idx-card .chart { display:flex; align-items:center; justify-content:flex-end; overflow:hidden; }
-.idx-card .chart svg { display:block; width:100%; height:44px; flex-shrink:1; }
+.idx-card .chart svg { display:block; width:100%; height:44px; flex-shrink:1; -webkit-transform:translateZ(0); transform:translateZ(0); }
 
 .up { color:var(--up); }
 .down { color:var(--down); }
@@ -73,9 +75,9 @@ body {
 .insight .label {   font-size:10px; color:var(--orange); white-space:nowrap; padding:1px 5px; background:rgba(255,105,0,0.08); border-radius:2px; }
 
 /* TABLE */
-.table-wrap { border:1px solid var(--border); border-radius:6px; margin-bottom:10px; background:var(--card); }
-.tb-scroll { display:flex; flex-direction:column; min-width:fit-content; overflow-x:auto; -webkit-overflow-scrolling:touch; -webkit-transform:translateZ(0); scrollbar-width:none; }
-.tb-scroll::-webkit-scrollbar { display:none; }
+.table-wrap { border:1px solid var(--border); border-radius:6px; margin-bottom:10px; overflow-x:auto; -webkit-overflow-scrolling:touch; -webkit-transform:translateZ(0); transform:translateZ(0); will-change:transform; scrollbar-width:none; }
+.table-wrap::-webkit-scrollbar { display:none; }
+.tb-scroll { display:flex; flex-direction:column; min-width:fit-content; background:var(--card); }
 .table-hd {
   display:flex; padding:8px 14px; background:var(--card2);
   border-bottom:1px solid var(--border); font-size:10px; color:var(--dim); font-weight:500;
