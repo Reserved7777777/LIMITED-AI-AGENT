@@ -32,6 +32,7 @@ INDEX_PAGES = [
     ('NDX', 'https://www.futunn.com/index/.IXIC-US', 'line'),
     ('DJI', 'https://www.futunn.com/index/.DJI-US', 'line'),
     ('VIX', 'https://www.futunn.com/futures/VXMAIN-US', 'line'),
+    # A-share/HK: gu.qq.com has visible line; futunn A-share ECharts lines are invisible
     ('SH', 'https://gu.qq.com/sh000001', 'tencent'),
     ('SZ', 'https://gu.qq.com/sz399001', 'tencent'),
     ('CY', 'https://gu.qq.com/sz399006', 'tencent'),
