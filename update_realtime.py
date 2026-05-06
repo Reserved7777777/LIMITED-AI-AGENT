@@ -69,7 +69,7 @@ def parse(text):
 # ============================================================
 # HTML PATCHER
 # ============================================================
-def patch_html(html, marker, new_price, new_change, new_chgp):
+def patch_html(html, marker, new_price, new_change, new_chgp, price_fmt=":,.2f"):
     pos = html.find(marker)
     if pos == -1:
         print(f"  marker '{marker}' not found")
@@ -87,7 +87,11 @@ def patch_html(html, marker, new_price, new_change, new_chgp):
     if not m:
         return html, False
     price_old = m.group(3)
-    price_new = f"{new_price:,.2f}"
+    # Format with appropriate precision
+    if price_fmt == ':,.4f':
+        price_new = f"{new_price:,.4f}"
+    else:
+        price_new = f"{new_price:,.2f}" 
 
     m2 = re.search(r'<div class="(change|c)\s+(up|down)">([^<]*?)(?:\s*<span[^>]*>([^<]*)</span>)?\s*</div>', after)
     if not m2:
@@ -518,6 +522,54 @@ def main():
     with open(html_path, 'r') as f:
         html = f.read()
 
+    # ===== HTML SELF-CHECK =====
+    # ============================================================
+    _required_markers = [
+        '<!-- HEADER -->',
+        '<!-- ===== INDICES ===== -->',
+        '<!-- STANCE -->',
+        '<!-- INSIGHT -->',
+        '<!-- ===== TIER 1 ===== -->',
+        '<!-- ===== TIER 2 ===== -->',
+        '<!-- ===== TIER 3 ===== -->',
+        '<!-- ===== COMMODITY & FX ===== -->',
+        '<!-- ANALYSIS -->',
+        '<!-- ===== RISK ===== -->',
+        '⚠️ 关键风险提示',
+        '<!-- ===== EVENTS ===== -->',
+        '<!-- FOOTER -->',
+    ]
+    _missing = [m for m in _required_markers if m not in html]
+    if _missing:
+        print(f"  ⚠️  SELF-CHECK: missing {len(_missing)} markers: {', '.join(_missing)}", file=sys.stderr)
+        # Auto-repair: rebuild report using build_report.py with cached data
+        _date = date
+        _cache_path = f'/tmp/report-data-{_date}.json'
+        if os.path.exists(_cache_path):
+            print(f"  Auto-repair: rebuilding report from {_cache_path}", file=sys.stderr)
+            import subprocess as _sp
+            _r = _sp.run(
+                ['python3', '/root/.openclaw/workspace/build_report.py',
+                 '--date', _date, '--data', _cache_path],
+                capture_output=True, text=True, timeout=90
+            )
+            if _r.returncode == 0:
+                # Re-read the repaired HTML
+                with open(html_path, 'r') as _rf:
+                    html = _rf.read()
+                print(f"  ✅ Auto-repair: report rebuilt successfully")
+                # Re-check
+                _still_missing = [m for m in _required_markers if m not in html]
+                if _still_missing:
+                    print(f"  ⚠️  Auto-repair partial: still missing {_still_missing}", file=sys.stderr)
+            else:
+                print(f"  ❌ Auto-repair failed: {_r.stderr[:200]}", file=sys.stderr)
+        else:
+            print(f"  ⚠️  Auto-repair: no cache at {_cache_path}, skipping", file=sys.stderr)
+    else:
+        print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers OK")
+
+
     updates = []
 
     # 1. XAU/USD
@@ -533,7 +585,7 @@ def main():
     if text:
         p, ch, cp = parse(text)
         if p:
-            html, ok = patch_html(html, 'USD/CNY', p, ch if ch else 0, cp if cp else 0)
+            html, ok = patch_html(html, 'USD/CNY', p, ch if ch else 0, cp if cp else 0, price_fmt=':,.4f')
             if ok: updates.append(f"CNH={p:,.4f}")
 
     # 3. WTI
@@ -591,53 +643,6 @@ def main():
     html = sync_analysis(html)
     
 # ============================================================
-    # 9. HTML SELF-CHECK — verify all markers, auto-repair if broken
-    # ============================================================
-    _required_markers = [
-        '<!-- HEADER -->',
-        '<!-- ===== INDICES ===== -->',
-        '<!-- STANCE -->',
-        '<!-- INSIGHT -->',
-        '<!-- ===== TIER 1 ===== -->',
-        '<!-- ===== TIER 2 ===== -->',
-        '<!-- ===== TIER 3 ===== -->',
-        '<!-- ===== COMMODITY & FX ===== -->',
-        '<!-- ANALYSIS -->',
-        '<!-- ===== RISK ===== -->',
-        '⚠️ 关键风险提示',
-        '<!-- ===== EVENTS ===== -->',
-        '<!-- FOOTER -->',
-    ]
-    _missing = [m for m in _required_markers if m not in html]
-    if _missing:
-        print(f"  ⚠️  SELF-CHECK: missing {len(_missing)} markers: {', '.join(_missing)}", file=sys.stderr)
-        # Auto-repair: rebuild report using build_report.py with cached data
-        _date = date
-        _cache_path = f'/tmp/report-data-{_date}.json'
-        if os.path.exists(_cache_path):
-            print(f"  Auto-repair: rebuilding report from {_cache_path}", file=sys.stderr)
-            import subprocess as _sp
-            _r = _sp.run(
-                ['python3', '/root/.openclaw/workspace/build_report.py',
-                 '--date', _date, '--data', _cache_path],
-                capture_output=True, text=True, timeout=90
-            )
-            if _r.returncode == 0:
-                # Re-read the repaired HTML
-                with open(html_path, 'r') as _rf:
-                    html = _rf.read()
-                print(f"  ✅ Auto-repair: report rebuilt successfully")
-                # Re-check
-                _still_missing = [m for m in _required_markers if m not in html]
-                if _still_missing:
-                    print(f"  ⚠️  Auto-repair partial: still missing {_still_missing}", file=sys.stderr)
-            else:
-                print(f"  ❌ Auto-repair failed: {_r.stderr[:200]}", file=sys.stderr)
-        else:
-            print(f"  ⚠️  Auto-repair: no cache at {_cache_path}, skipping", file=sys.stderr)
-    else:
-        print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers OK")
-
     # Write updated HTML
     with open(html_path, 'w') as f:
         f.write(html)
