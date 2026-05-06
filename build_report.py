@@ -577,20 +577,28 @@ def build_report(date_str, template_path, output_path, data_json=None):
       <div class="r-dot"></div>
       <div class="r-text"><strong>{title}</strong> — {desc}</div>
     </li>\n    '''
-        new_risk = f'<div class="risk-list">\n    {risk_items}</div>'
-        html = _replace_tag(html, 'risk-list', new_risk, tag='ul')
-        # Self-heal: if risk sec-label went missing, rebuild via markers
-        if '关键风险提示' not in html:
-            full_risk = (
-                '<!-- ===== RISK ===== -->\n'
-                '  <div class="sec-label">\n    <span>⚠️ 关键风险提示</span>\n  </div>\n'
-                f'  <div class="risk-list">\n    {risk_items}</div>'
-            )
-            # Use EVENTS marker as end boundary
-            _s = html.find('<!-- ===== RISK ===== -->')
-            _e = html.find('<!-- ===== EVENTS ===== -->')
-            if _s >= 0 and _e > _s:
-                html = html[:_s] + full_risk + html[_e:]
+        # Build complete risk section using marker boundaries (always includes sec-label)
+        full_risk_block = (
+            '<!-- ===== RISK ===== -->\n'
+            '  <div class="sec-label">\n    <span>⚠️ 关键风险提示</span>\n  </div>\n'
+            '  <div class="risk-list">\n    ' + risk_items + '</div>'
+        )
+        _s = html.find('<!-- ===== RISK ===== -->')
+        _e = html.find('<!-- ===== EVENTS ===== -->', _s)
+        if _s >= 0 and _e > _s:
+            html = html[:_s] + full_risk_block + html[_e:]
+        else:
+            print('  WARN: RISK markers gone, ul.risk-list fallback', file=sys.stderr)
+            fallback = f'<div class="risk-list">\n    {risk_items}</div>'
+            html = _replace_tag(html, 'risk-list', fallback, tag='ul')
+            if '关键风险提示' not in html:
+                print('  WARN: sec-label still missing, emergency append', file=sys.stderr)
+                emergency = (
+                    '<!-- ===== RISK ===== -->\n'
+                    '  <div class="sec-label">\n    <span>⚠️ 关键风险提示</span>\n  </div>\n'
+                    '  <div class="risk-list">\n    ' + risk_items + '</div>'
+                )
+                html = html + '\n\n' + emergency
         print(f"  Risks: replaced ({len(risks)} items)")
     
     # 9. Events
