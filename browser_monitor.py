@@ -151,7 +151,7 @@ def _post_process(col_pts, h):
     med = _median_filter([col_pts[i] for i in valid], 5)
     xs, ys = list(valid), med
     if len(ys) > 45:
-        idxs = [int(i * (len(ys) - 1) / 44) for i in range(45)]
+        idxs = [int(i * (len(ys) - 1) / 40) for i in range(41)]
         ys = [ys[i] for i in idxs]
         xs = [xs[i] for i in idxs]
     return _pts_to_svg_path(list(zip(xs, ys)))

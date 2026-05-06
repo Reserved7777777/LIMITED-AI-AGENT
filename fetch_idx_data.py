@@ -623,17 +623,18 @@ def assemble_output(index_data, date_str=None):
             change = entry.get('change', 0)
             chg_pct = entry.get('chg_pct', 0)
             
-            # Generate sparkline — prefer API minute data (exact points, smooth)
-            # Canvas spark_path only for VIX (K-line, no API minute data)
-            # Fallback to OHLC synthetic
+            # Generate sparkline — prefer canvas spark_path (exact page chart match)
+            # Fallback to API minute data, then OHLC synthetic
             spark_path = entry.get('spark_path')
             minute_prices = entry.get('minute_prices', [])
-            if minute_prices and len(minute_prices) >= 5:
-                sparklines[key] = gen_sparkline_svg(minute_prices)
-                sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
-            elif spark_path and is_vix:
+            if spark_path:
                 sparklines[key] = spark_path
                 sparklines[f'{key}_color'] = '#FF6900' if (change or 0) >= 0 else '#00C853'
+                if is_vix:
+                    sparklines[f'{key}_color'] = '#FF6900' if (change or 0) >= 0 else '#00C853'
+            elif minute_prices and len(minute_prices) >= 5:
+                sparklines[key] = gen_sparkline_svg(minute_prices)
+                sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
             elif entry.get('open') is not None and entry.get('high') is not None:
                 o = entry['open']
                 h = entry['high']
