@@ -90,17 +90,21 @@ def _pts_to_svg_path(pts):
     return path
 
 
-def _color_score(r, g, b, is_up):
+def _color_score(r, g, b, is_up, is_echarts=False):
     """Score how much this pixel looks like the chart line.
-    For UP: red-dominant (r >> g,b).  For DOWN: green-dominant (g >> r,b).
+    For UP: red-dominant (r >> g,b).
+    For DOWN (standard): green-dominant (g >> r,b).
+    For ECharts (VIX): teal/blue-green line (g+b >> 2*r).
     """
+    if is_echarts:
+        return (g + b) - 2 * r
     if is_up:
         return r - max(g, b)
     else:
         return g - max(r, b)
 
 
-def _column_to_pts(pixels, w, h, l, r, t, b, is_up, bg_thresh=235):
+def _column_to_pts(pixels, w, h, l, r, t, b, is_up, bg_thresh=235, is_echarts=False):
     """Per-column dominant color extraction for a line chart.
     Returns list of y-positions (None = no line found in that column).
     """
@@ -112,7 +116,7 @@ def _column_to_pts(pixels, w, h, l, r, t, b, is_up, bg_thresh=235):
             rv, gv, bv = pixels[row * w + col][:3]
             if rv > bg_thresh and gv > bg_thresh and bv > bg_thresh:
                 continue
-            score = _color_score(rv, gv, bv, is_up)
+            score = _color_score(rv, gv, bv, is_up, is_echarts)
             if score > best_score:
                 best_score = score
                 best_y = row
@@ -159,7 +163,7 @@ def _post_process(col_pts, h):
 
 # ── extractors ───────────────────────────────────────────────────
 
-def _extract_line_spark_raw(page, is_up):
+def _extract_line_spark_raw(page, is_up, is_echarts=False):
     """Line chart canvas: find dominant-color line per column."""
     if Image is None:
         return None
@@ -184,7 +188,7 @@ def _extract_line_spark_raw(page, is_up):
         t = int(h * 0.12)
         b = int(h * 0.85)
 
-        col_pts = _column_to_pts(pixels, w, h, l, r, t, b, is_up)
+        col_pts = _column_to_pts(pixels, w, h, l, r, t, b, is_up, is_echarts=is_echarts)
         return _post_process(col_pts, h)
     except Exception as e:
         print("  WARN: line_spark %s" % e, file=sys.stderr)
@@ -238,7 +242,7 @@ def _extract_kline_spark_raw(page):
         return None
 
 
-def _extract_tencent_spark_raw(page, is_up):
+def _extract_tencent_spark_raw(page, is_up, is_echarts=False):
     """Tencent gu.qq.com page: find chart canvas, extract line."""
     if Image is None:
         return None
@@ -268,7 +272,7 @@ def _extract_tencent_spark_raw(page, is_up):
         b = int(h * 0.88)
 
         pixels = list(img.getdata())
-        col_pts = _column_to_pts(pixels, w, h, l, r, t, b, is_up, bg_thresh=240)
+        col_pts = _column_to_pts(pixels, w, h, l, r, t, b, is_up, bg_thresh=240, is_echarts=is_echarts)
         return _post_process(col_pts, h)
     except Exception as e:
         print("  WARN: tencent_spark %s" % e, file=sys.stderr)
@@ -350,13 +354,14 @@ def run():
                 data = extract_page_price(text)
                 if data and data.get('price'):
                     is_up = data.get('change', 0) >= 0
+                    is_echarts = (name == 'VIX')
 
                     if chart_type == 'kline':
                         spark_path = _extract_kline_spark_raw(page)
                     elif chart_type == 'tencent':
-                        spark_path = _extract_tencent_spark_raw(page, is_up)
+                        spark_path = _extract_tencent_spark_raw(page, is_up, is_echarts)
                     else:  # line
-                        spark_path = _extract_line_spark_raw(page, is_up)
+                        spark_path = _extract_line_spark_raw(page, is_up, is_echarts)
 
                     if spark_path:
                         data['spark_path'] = spark_path
