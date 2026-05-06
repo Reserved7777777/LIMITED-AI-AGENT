@@ -250,6 +250,136 @@ def sync_risks_from_cls(html):
 # ============================================================
 # ANALYSIS SYNC - generate from current prices
 # ============================================================
+
+# ============================================================
+# INDEX CARDS — sync prices + sparklines from browser snapshot
+# ============================================================
+def sync_indices(html):
+    """Refresh index card prices, changes, and sparklines from browser_monitor snapshot."""
+    import json, subprocess, re
+    
+    # Run browser_monitor to get fresh data (retry + temp fallback)
+    snapshot_path = '/root/.openclaw/workspace/idx_data/browser_snapshot.json'
+    try:
+        r = subprocess.run(
+            ['python3', '/root/.openclaw/workspace/browser_monitor.py'],
+            capture_output=True, text=True, timeout=90
+        )
+        if r.returncode != 0:
+            print(f"  ⚠️  browser_monitor failed: {r.stderr[:200]}", file=sys.stderr)
+    except Exception as e:
+        print(f"  ⚠️  browser_monitor error: {e}", file=sys.stderr)
+    
+    # Read snapshot (even if browser_monitor failed, use existing)
+    try:
+        with open(snapshot_path) as f:
+            snap = json.load(f)
+    except Exception as e:
+        print(f"  ⚠️  can't read snapshot: {e}", file=sys.stderr)
+        return html
+    
+    indices = snap.get('indices', {})
+    if not indices:
+        print("  ⚠️  empty snapshot", file=sys.stderr)
+        return html
+    
+    # Map snapshot keys to card labels in HTML
+    card_map = {
+        'SPX': 'S&P 500', 'NDX': 'NASDAQ', 'DJI': '道琼斯',
+        'VIX': 'VIX', 'SH': '上证指数', 'SZ': '深证成指',
+        'CY': '创业板指', 'HK': '恒生科技',
+    }
+    
+    updates = 0
+    for key, info in indices.items():
+        label = card_map.get(key)
+        if not label:
+            continue
+        
+        price = info.get('price')
+        chg_val = info.get('change')
+        chg_pct = info.get('chg_pct')
+        spark = info.get('spark_path', '')
+        
+        if price is None:
+            continue
+        
+        # Find the card by label
+        card_start = html.find(f'>{label}</span>')
+        if card_start < 0:
+            continue
+        card_end = html.find('</a>', card_start)
+        if card_end < 0:
+            card_end = card_start + 800
+        card_html = html[card_start:card_end + 4]
+        
+        # 1. Format price with proper grouping
+        is_up = chg_val is not None and chg_val >= 0
+        cls = 'up' if is_up else 'down'
+        
+        # Format price with commas
+        if isinstance(price, (int, float)):
+            price_str = f"{price:,.2f}"
+            # Remove .00 for whole numbers like VIX
+            if price_str.endswith('.00'):
+                price_str = f"{price:,.0f}"
+        else:
+            price_str = str(price)
+        
+        # 2. Replace price
+        m = re.search(r'<div class="price (?:up|down)">([^<]*)</div>', card_html)
+        if m:
+            old_price = m.group(1)
+            if old_price != price_str:
+                html = html.replace(old_price, price_str, 1)
+        
+        # 3. Replace change and chg_pct
+        if chg_val is not None:
+            chg_str = f"{'+' if chg_val >= 0 else ''}{chg_val:,.2f}"
+            if chg_str.endswith('.00'):
+                chg_str = f"{'+' if chg_val >= 0 else ''}{chg_val:,.0f}"
+            m2 = re.search(r'<div class="change (?:up|down)">([^<]*?)<span', card_html)
+            if m2:
+                old_chg = m2.group(1).strip()
+                if old_chg != chg_str:
+                    html = html.replace(old_chg, chg_str, 1)
+        
+        if chg_pct is not None:
+            pct_str = f"{'+' if chg_pct >= 0 else ''}{chg_pct:.2f}%"
+            m3 = re.search(r'<span class="sub2">([^<]*)</span>', card_html)
+            if m3:
+                old_pct = m3.group(1)
+                if old_pct != pct_str:
+                    html = html.replace(old_pct, pct_str, 1)
+        
+        # 4. Replace spark SVG path
+        if spark:
+            old_spark = re.search(r'<path d="([^"]*)" fill="none"', card_html)
+            if old_spark:
+                old_path = old_spark.group(1)
+                if old_path != spark:
+                    html = html.replace(old_path, spark, 1)
+        
+        # 5. Update up/down class - only within this card's HTML
+        card_start_ctx = html.rfind(f'>{label}</span>', 0, card_start + 50)
+        card_boundary = html.rfind('<a class="idx-card"', 0, card_start_ctx)
+        card_end_boundary = html.find('</a>', card_start) + 4
+        # Replace within card boundaries
+        for old_cls in ['up', 'down']:
+            price_tag = f'<div class="price {old_cls}">'
+            new_price_tag = f'<div class="price {cls}">'
+            html = html[:card_boundary] + html[card_boundary:card_end_boundary].replace(price_tag, new_price_tag) + html[card_end_boundary:]
+            chg_tag = f'<div class="change {old_cls}">'
+            new_chg_tag = f'<div class="change {cls}">'
+            html = html[:card_boundary] + html[card_boundary:card_end_boundary].replace(chg_tag, new_chg_tag) + html[card_end_boundary:]
+        
+        updates += 1
+    
+    if updates:
+        print(f"  Indices synced: {updates} cards")
+    return html
+
+
 def sync_analysis(html, date_str=None):
     """Update analysis section prices in-place. Preserves template structure."""
     import re
@@ -305,8 +435,41 @@ def sync_analysis(html, date_str=None):
             txt = re.sub(r'(USD/CNH 报 )[0-9]+\.?[0-9]*', lambda m: m.group(1) + cnh_p, txt)
         _analysis_text = txt
     else:
-        print("  no cached analysis text available")
-        return html
+        # Fallback: extract analysis text from existing HTML body and update prices
+        body_start = html.find('<div class="a-body">')
+        if body_start > 0:
+            body_end = html.find('</div>\n    </div>\n', body_start)
+            if body_end < 0:
+                body_end = html.find('</div>', body_start + 50)
+                if body_end > 0:
+                    body_end = html.find('</div>', body_end + 6)
+            if body_end > body_start:
+                _analysis_text = html[body_start:body_end]
+                # Clean up HTML tags, keep inner content
+                _inner = _analysis_text.replace('<div class="a-body">\n', '')
+                if _inner.endswith('</div>'):
+                    _inner = _inner[:-6]
+                _analysis_text = _inner.strip()
+                if gold_p:
+                    _gold_ctx = '\u9ec4\u91d1\uff08XAU/USD\uff09</strong>\uff1a\u62a5 $'
+                    _gp = _analysis_text.find(_gold_ctx)
+                    if _gp >= 0:
+                        _after = _analysis_text[_gp+len(_gold_ctx):]
+                        _old_price = re.search(r'[0-9,]+\.?[0-9]*', _after)
+                        if _old_price:
+                            _analysis_text = _analysis_text[:_gp+len(_gold_ctx)] + f"{float(gold_p.replace(',', '')):,.2f}" + _analysis_text[_gp+len(_gold_ctx)+_old_price.end():]
+                if wti_p:
+                    _analysis_text = re.sub(r'(WTI \$)[0-9,]+\.?[0-9]*', lambda m: m.group(1) + wti_p, _analysis_text)
+                if brent_p:
+                    _analysis_text = re.sub(r'(\u5e03\u4f26\u7279 \$)[0-9,]+\.?[0-9]*', lambda m: m.group(1) + brent_p, _analysis_text)
+                if cnh_p:
+                    _analysis_text = re.sub(r'(USD/CNH \u62a5 )[0-9]+\.?[0-9]*', lambda m: m.group(1) + cnh_p, _analysis_text)
+            else:
+                print("  can't extract analysis text from HTML")
+                return html
+        else:
+            print("  no analysis section in HTML")
+            return html
 
     # Use marker boundaries: <!-- ANALYSIS --> to <!-- ===== RISK ===== -->
     an_comment = '<!-- ANALYSIS -->'
@@ -549,6 +712,8 @@ def main():
     else:
         print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers OK")
 
+
+    html = sync_indices(html)
 
     updates = []
 
