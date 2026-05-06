@@ -31,7 +31,7 @@ INDEX_PAGES = [
     ('SPX', 'https://www.futunn.com/index/.SPX-US', 'line'),
     ('NDX', 'https://www.futunn.com/index/.IXIC-US', 'line'),
     ('DJI', 'https://www.futunn.com/index/.DJI-US', 'line'),
-    ('VIX', 'https://www.futunn.com/futures/VXMAIN-US', 'kline'),
+    ('VIX', 'https://www.futunn.com/futures/VXMAIN-US', 'line'),
     ('SH', 'https://gu.qq.com/sh000001', 'tencent'),
     ('SZ', 'https://gu.qq.com/sz399001', 'tencent'),
     ('CY', 'https://gu.qq.com/sz399006', 'tencent'),
