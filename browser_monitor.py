@@ -227,9 +227,9 @@ def _extract_kline_spark_raw(page):
         xs, ys = zip(*valid)
         ys = list(_median_filter(ys, 5))
         xs = list(xs)
-        # Downsample to ~78 points
-        if len(ys) > 80:
-            idxs = [int(i * (len(ys) - 1) / 77) for i in range(78)]
+        # Downsample to 41 points (consistent with other SVGs)
+        if len(ys) > 45:
+            idxs = [int(i * (len(ys) - 1) / 40) for i in range(41)]
             ys = [ys[i] for i in idxs]
             xs = [xs[i] for i in idxs]
         return _pts_to_svg_path(list(zip(xs, ys)))

@@ -426,10 +426,11 @@ def monitor_futunn_pages():
 # ============================================================
 # SPARKLINE GENERATION
 # ============================================================
-def gen_sparkline_svg(prices, width=80, height=32):
+def gen_sparkline_svg(prices, width=80, height=32, target_pts=41):
     """Generate SVG path from price array.
     
     Maps to viewBox='0 -4 80 32' (y: -4 top, 28 bottom, 32 total).
+    Always produces exactly target_pts (default 41) evenly-spaced points.
     """
     if not prices or len(prices) < 2:
         mid = -4 + height / 2
@@ -442,21 +443,15 @@ def gen_sparkline_svg(prices, width=80, height=32):
     if rng == 0:
         rng = 1
     
-    # Downsample to ~40 points (~2px per point over 80px width)
-    pts_needed = min(n, width // 2)
-    step = max(1, n // pts_needed)
-    sampled = prices[::step]
-    if sampled[-1] != prices[-1]:
-        sampled = sampled[:] + [prices[-1]]
+    n_target = min(n, target_pts)
     
-    n2 = len(sampled)
     points = []
-    for i, p in enumerate(sampled):
-        x = round((i / (n2 - 1)) * (width - 4) + 2, 1) if n2 > 1 else width / 2
-        # Map price to viewBox y: -2(top) to 26(bottom)
-        # Leave 2px margin top/bottom so no point hits the viewBox edge
+    for i in range(n_target):
+        # Evenly-spaced index into prices array
+        idx = int(i * (n - 1) / (n_target - 1))
+        p = prices[idx]
+        x = round(2 + (i / (n_target - 1)) * (width - 4), 1) if n_target > 1 else width / 2
         y = round(-2 + ((max_p - p) / rng) * 24, 1)
-        # Clamp to safe bounds (within 1px of edge at most)
         if y < -3.5: y = -3.5
         if y > 27.5: y = 27.5
         points.append(f"{x},{y}")
