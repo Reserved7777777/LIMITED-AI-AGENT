@@ -69,16 +69,8 @@ def extract(text, key):
     # VIX: use the raw futures price (top value on page), NOT .VIX spot override
     # User explicitly requested: "不要用 .VIX的值用最上面的第一个值"
     # Update source label to indicate it's the futures contract
-    # VIX: compute OHLC data for sparkline generation
     if 'VIX' in key and result.get('price'):
         result['source'] = 'futunn_browser'
-        # Generate OHLC from extracted data
-        pc = result.get('prev_close', result['price'])
-        _h = max(result['price'], pc) * 1.001
-        _l = min(result['price'], pc) * 0.999
-        result['open'] = round(pc, 2)
-        result['high'] = round(_h, 2)
-        result['low'] = round(_l, 2)
     return result if result.get('price') else None
 
 
@@ -108,19 +100,11 @@ def extract_spark_from_canvas(page, target_points=73):
         for i, rgb in enumerate(pixel_data):
             col_pixels[i % w].append(rgb)
         
-        # CROP EDGE COLUMNS (Y-axis labels/shadows at left 10% and right 10%)
-        # Actual chart area starts after the left axis and ends before the right axis
-        _crop_left = int(w * 0.10)
-        _crop_right = int(w * 0.90)
-        
         # For each column, find the chart line position via max saturation
         # This picks the single most saturated non-white pixel = center of the chart line
         # More stable than weighted centroid which picks up noise from anti-aliased edges
         col_pts = []
         for col in range(w):
-            if col < _crop_left or col > _crop_right:
-                col_pts.append(None)
-                continue
             best_y = -1
             best_score = 0
             for row in range(h):
@@ -158,44 +142,6 @@ def extract_spark_from_canvas(page, target_points=73):
                     col_pts[i] = col_pts[before[-1]]
                 elif after:
                     col_pts[i] = col_pts[after[0]]
-        
-        # CROP: remove axis/edge artifacts by filtering outlier Y positions
-        # Y-axis labels/shadows are typically at the extreme edges of the canvas
-        # The real chart line occupies the middle ~70% of the Y range
-        # Use IQR-based outlier removal
-        _y_vals = [v for v in col_pts if v is not None]
-        if _y_vals:
-            _y_sorted = sorted(_y_vals)
-            _n = len(_y_sorted)
-            _q1 = _y_sorted[_n // 4]
-            _q3 = _y_sorted[3 * _n // 4]
-            _iqr = _q3 - _q1 if _q3 > _q1 else max(_y_sorted) - min(_y_sorted) * 0.3
-            _lower = _q1 - 1.5 * _iqr
-            _upper = _q3 + 1.5 * _iqr
-            # Also clip to within image height (hard boundary)
-            _lower = max(_lower, 0)
-            _upper = min(_upper, h - 1)
-            # Mark outlier columns as None for interpolation
-            for i in range(len(col_pts)):
-                if col_pts[i] is not None and (col_pts[i] < _lower or col_pts[i] > _upper):
-                    col_pts[i] = None
-            # Re-interpolate after cropping outliers
-            valid = [i for i, v in enumerate(col_pts) if v is not None]
-            if len(valid) < 5:
-                return None
-            for i in range(len(col_pts)):
-                if col_pts[i] is None:
-                    before = [j for j in valid if j < i]
-                    after = [j for j in valid if j > i]
-                    if before and after:
-                        b, a = before[-1], after[0]
-                        col_pts[i] = int(col_pts[b] + (col_pts[a] - col_pts[b]) * (i - b) / (a - b))
-                    elif before:
-                        col_pts[i] = col_pts[before[-1]]
-                    elif after:
-                        col_pts[i] = col_pts[after[0]]
-        
-        valid = [i for i, v in enumerate(col_pts) if v is not None] or valid
         valid.sort()
         ys = [col_pts[i] for i in valid]
         xs = valid
@@ -226,11 +172,9 @@ def extract_spark_from_canvas(page, target_points=73):
         def nx(sx): return margin + (sx - min_sx) / x_range * (80 - 2 * margin)
         def ny(sy): return -4 + (sy - min_y) / y_range * 32
         
-        # Hard clamp: ensure all points stay within viewBox (avoid axis/shadow artifacts)
         path = 'M{:.1f},{:.1f}'.format(nx(xs[0]), ny(ys[0]))
         for sxi, syi in zip(xs[1:], ys[1:]):
-            _y_clamped = max(-4.0, min(28.0, ny(syi)))
-            path += ' L{:.1f},{:.1f}'.format(nx(sxi), _y_clamped)
+            path += ' L{:.1f},{:.1f}'.format(nx(sxi), ny(syi))
         return path
         
     except Exception as e:
@@ -263,13 +207,7 @@ def run():
                     data['market'] = info['market']
                     data['symbol'] = info['symbol']
                     try:
-                        # VIX uses a K-line chart (not line chart), so canvas
-                        # pixel analysis doesn't work correctly. Generate
-                        # sparkline from OHLC/extracted data instead.
-                        if key == 'VIX':
-                            spark_path = None
-                        else:
-                            spark_path = extract_spark_from_canvas(page)
+                        spark_path = extract_spark_from_canvas(page)
                         if spark_path:
                             data['spark_path'] = spark_path
                     except Exception:

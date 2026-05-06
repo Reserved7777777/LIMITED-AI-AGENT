@@ -1,0 +1,19 @@
+{
+  "date": "2026-05-07",
+  "timestamp": "2026-05-07 01:21:15",
+  "indices": {
+    "VIX": {
+      "price": 19.23,
+      "change": -0.55,
+      "chg_pct": -2.77,
+      "status": "交易中 05/06 12:11 (美中)",
+      "prev_close": 19.78,
+      "high": 19.8,
+      "source": "futunn_browser",
+      "open": 19.78,
+      "low": 19.21,
+      "market": "us",
+      "symbol": "VXMAIN"
+    }
+  }
+}

@@ -1,0 +1,575 @@
+{
+  "status": "A股盘前",
+  "indices": {
+    "SPX": {
+      "price": 7339.91,
+      "change": 80.69,
+      "chg_pct": 1.11,
+      "source": "futunn_init"
+    },
+    "NDX": {
+      "price": 25736.976,
+      "change": 410.85,
+      "chg_pct": 1.62,
+      "source": "futunn_init"
+    },
+    "DJI": {
+      "price": 49778.86,
+      "change": 480.61,
+      "chg_pct": 0.97,
+      "source": "futunn_init"
+    },
+    "VIX": {
+      "price": 19.23,
+      "change": -0.55,
+      "chg_pct": -2.77,
+      "source": "futunn_browser"
+    },
+    "SH": {
+      "price": 4160.17,
+      "change": 48.01,
+      "chg_pct": 1.17,
+      "source": "tencent"
+    },
+    "SZ": {
+      "price": 15459.62,
+      "change": 352.07,
+      "chg_pct": 2.33,
+      "source": "tencent"
+    },
+    "CY": {
+      "price": 3778.16,
+      "change": 101.01,
+      "chg_pct": 2.75,
+      "source": "tencent"
+    },
+    "HK": {
+      "price": 4969.2,
+      "change": 39.52,
+      "chg_pct": 0.8,
+      "source": "tencent"
+    }
+  },
+  "stance_cn": "保守买入 50%",
+  "stance_us": "激进买入 60%",
+  "stance_cn_pct": 50,
+  "stance_us_pct": 60,
+  "stance_cn_color": "var(--orange)",
+  "stance_us_color": "var(--green)",
+  "insight": "美韩存储芯片创历史新高，AI半导体产业链全面激活。A股科创板ETF(+5.02%)/半导体ETF(+4.91%)领涨，韩国KOSPI暴涨5%突破7200点。短期关注存储芯片链传导至A股半导体板块的机会，同时警惕中东地缘风险对油价的扰动。",
+  "tiers": [
+    {
+      "label": "高位动量",
+      "stocks": [
+        {
+          "symbol": "588000",
+          "name": "科创板ETF",
+          "price": 1.65,
+          "change": 0.08,
+          "chg_pct": 5.02,
+          "volume": 51410542,
+          "amount": 8401295638,
+          "market_cap": 74196237348,
+          "tag": "硬科技旗舰·半导体重仓",
+          "href": "https://www.futunn.com/stock/588000-SH"
+        },
+        {
+          "symbol": "512480",
+          "name": "半导体ETF",
+          "price": 1.82,
+          "change": 0.09,
+          "chg_pct": 4.91,
+          "volume": 12900460,
+          "amount": 2308150758,
+          "market_cap": 20468511396,
+          "tag": "半导体国产替代·周期反转",
+          "href": "https://www.futunn.com/stock/512480-SH"
+        },
+        {
+          "symbol": "510050",
+          "name": "上证50ETF",
+          "price": 3.06,
+          "change": 0.02,
+          "chg_pct": 0.69,
+          "volume": 17512075,
+          "amount": 5350037813,
+          "market_cap": 56741208089,
+          "tag": "权重蓝筹底仓·红利属性",
+          "href": "https://www.futunn.com/stock/510050-SH"
+        },
+        {
+          "symbol": "510500",
+          "name": "中证500ETF",
+          "price": 8.43,
+          "change": 0.01,
+          "chg_pct": 0.09,
+          "volume": 7793619,
+          "amount": 6546640850,
+          "market_cap": 67819086175,
+          "tag": "中小盘成长弹性·量化首选",
+          "href": "https://www.futunn.com/stock/510500-SH"
+        },
+        {
+          "symbol": "512100",
+          "name": "中证1000ETF",
+          "price": 3.36,
+          "change": 0.02,
+          "chg_pct": 0.48,
+          "volume": 17847549,
+          "amount": 5976880487,
+          "market_cap": 18690089786,
+          "tag": "小盘超额收益·宽基配置",
+          "href": "https://www.futunn.com/stock/512100-SH"
+        },
+        {
+          "symbol": "510300",
+          "name": "沪深300ETF",
+          "price": 4.82,
+          "change": 0.0,
+          "chg_pct": 0.06,
+          "volume": 16517864,
+          "amount": 7965711080,
+          "market_cap": 189929985860,
+          "tag": "核心资产底仓·高流动性",
+          "href": "https://www.futunn.com/stock/510300-SH"
+        },
+        {
+          "symbol": "INTC",
+          "name": "英特尔",
+          "price": 108.15,
+          "change": 12.37,
+          "chg_pct": 12.91,
+          "volume": 198481963,
+          "amount": 21342374656,
+          "market_cap": 543561900000,
+          "tag": "代工订单复苏·18A工艺突破",
+          "href": "https://www.futunn.com/stock/INTC-US"
+        },
+        {
+          "symbol": "AMD",
+          "name": "AMD",
+          "price": 355.26,
+          "change": 13.72,
+          "chg_pct": 4.02,
+          "volume": 64235117,
+          "amount": 23271095552,
+          "market_cap": 579194154628,
+          "tag": "MI300放量·先进封装",
+          "href": "https://www.futunn.com/stock/AMD-US"
+        },
+        {
+          "symbol": "AAPL",
+          "name": "苹果",
+          "price": 284.18,
+          "change": 7.35,
+          "chg_pct": 2.66,
+          "volume": 49311712,
+          "amount": 13926077440,
+          "market_cap": 4173852828080,
+          "tag": "WWDC AI战略发布·超卖反弹",
+          "href": "https://www.futunn.com/stock/AAPL-US"
+        },
+        {
+          "symbol": "NVDA",
+          "name": "英伟达",
+          "price": 196.5,
+          "change": -1.98,
+          "chg_pct": -1.0,
+          "volume": 113406620,
+          "amount": 22404032000,
+          "market_cap": 4774950000000,
+          "tag": "AI芯片龙头·Blackwell爆单",
+          "href": "https://www.futunn.com/stock/NVDA-US"
+        }
+      ]
+    },
+    {
+      "label": "中位动量",
+      "stocks": [
+        {
+          "symbol": "512880",
+          "name": "证券ETF",
+          "price": 1.08,
+          "change": 0.0,
+          "chg_pct": 0.19,
+          "volume": 19724462,
+          "amount": 2134179756,
+          "market_cap": 53185600259,
+          "tag": "券商龙头·交易活跃催化",
+          "href": "https://www.futunn.com/stock/512880-SH"
+        },
+        {
+          "symbol": "159928",
+          "name": "消费ETF",
+          "price": 0.75,
+          "change": 0.0,
+          "chg_pct": 0.27,
+          "volume": 4895282,
+          "amount": 365906977,
+          "market_cap": 18654553857,
+          "tag": "消费复苏·龙头集中",
+          "href": "https://www.futunn.com/stock/159928-SZ"
+        },
+        {
+          "symbol": "159865",
+          "name": "养殖ETF",
+          "price": 0.62,
+          "change": 0.01,
+          "chg_pct": 0.82,
+          "volume": 4955769,
+          "amount": 305627935,
+          "market_cap": 6679306115,
+          "tag": "猪周期反转·养殖盈利",
+          "href": "https://www.futunn.com/stock/159865-SZ"
+        },
+        {
+          "symbol": "515050",
+          "name": "5GETF",
+          "price": 2.97,
+          "change": -0.01,
+          "chg_pct": -0.17,
+          "volume": 1682412,
+          "amount": 498901468,
+          "market_cap": 11052278228,
+          "tag": "5G新基建·通信复苏",
+          "href": "https://www.futunn.com/stock/515050-SH"
+        },
+        {
+          "symbol": "159915",
+          "name": "创业板ETF",
+          "price": 3.69,
+          "change": -0.01,
+          "chg_pct": -0.14,
+          "volume": 10039840,
+          "amount": 3710117031,
+          "market_cap": 45641986170,
+          "tag": "科技成长先锋·双创核心",
+          "href": "https://www.futunn.com/stock/159915-SZ"
+        },
+        {
+          "symbol": "510880",
+          "name": "红利ETF",
+          "price": 3.34,
+          "change": -0.01,
+          "chg_pct": -0.18,
+          "volume": 1434351,
+          "amount": 478767666,
+          "market_cap": 18700164375,
+          "tag": "高股息防御·红利策略",
+          "href": "https://www.futunn.com/stock/510880-SH"
+        },
+        {
+          "symbol": "GOOGL",
+          "name": "谷歌",
+          "price": 388.43,
+          "change": 5.18,
+          "chg_pct": 1.35,
+          "volume": 23878626,
+          "amount": 9268058880,
+          "market_cap": 4706217880000,
+          "tag": "Gemini搜索·云计算追赶",
+          "href": "https://www.futunn.com/stock/GOOGL-US"
+        },
+        {
+          "symbol": "AMZN",
+          "name": "亚马逊",
+          "price": 273.55,
+          "change": 1.5,
+          "chg_pct": 0.55,
+          "volume": 41908529,
+          "amount": 11526250240,
+          "market_cap": 2942607286218,
+          "tag": "AWS AI重构·广告高增",
+          "href": "https://www.futunn.com/stock/AMZN-US"
+        },
+        {
+          "symbol": "MSFT",
+          "name": "微软",
+          "price": 411.38,
+          "change": -2.24,
+          "chg_pct": -0.54,
+          "volume": 25700891,
+          "amount": 10567765248,
+          "market_cap": 3055909468532,
+          "tag": "云业务加速·OpenAI整合",
+          "href": "https://www.futunn.com/stock/MSFT-US"
+        },
+        {
+          "symbol": "META",
+          "name": "Meta",
+          "price": 604.96,
+          "change": -5.45,
+          "chg_pct": -0.89,
+          "volume": 17171301,
+          "amount": 10379075584,
+          "market_cap": 1535644561988,
+          "tag": "Llama 3开源·VR生态",
+          "href": "https://www.futunn.com/stock/META-US"
+        }
+      ]
+    },
+    {
+      "label": "低位价值",
+      "stocks": [
+        {
+          "symbol": "512010",
+          "name": "医药ETF",
+          "price": 0.37,
+          "change": -0.0,
+          "chg_pct": -1.07,
+          "volume": 9528835,
+          "amount": 352819786,
+          "market_cap": 17079457070,
+          "tag": "医药创新·集采出清",
+          "href": "https://www.futunn.com/stock/512010-SH"
+        },
+        {
+          "symbol": "159869",
+          "name": "游戏ETF",
+          "price": 1.29,
+          "change": -0.02,
+          "chg_pct": -1.67,
+          "volume": 3469619,
+          "amount": 450170415,
+          "market_cap": 9587352253,
+          "tag": "AI+游戏·版号放量",
+          "href": "https://www.futunn.com/stock/159869-SZ"
+        },
+        {
+          "symbol": "159766",
+          "name": "旅游ETF",
+          "price": 0.66,
+          "change": -0.01,
+          "chg_pct": -0.75,
+          "volume": 5228708,
+          "amount": 345110991,
+          "market_cap": 4529265238,
+          "tag": "五一数据超预期·出行链",
+          "href": "https://www.futunn.com/stock/159766-SZ"
+        },
+        {
+          "symbol": "159949",
+          "name": "创业板50ETF",
+          "price": 1.76,
+          "change": -0.01,
+          "chg_pct": -0.34,
+          "volume": 10133006,
+          "amount": 1784460616,
+          "market_cap": 21825294195,
+          "tag": "创业板龙头组合·赛道配置",
+          "href": "https://www.futunn.com/stock/159949-SZ"
+        },
+        {
+          "symbol": "300750",
+          "name": "宁德时代",
+          "price": 436.0,
+          "change": -9.0,
+          "chg_pct": -2.02,
+          "volume": 298121,
+          "amount": 13127297982,
+          "market_cap": 2017150869956,
+          "tag": "电池龙头·全球市占率提升",
+          "href": "https://www.futunn.com/stock/300750-SZ"
+        },
+        {
+          "symbol": "600519",
+          "name": "贵州茅台",
+          "price": 1384.79,
+          "change": -16.38,
+          "chg_pct": -1.17,
+          "volume": 52753,
+          "amount": 7316111748,
+          "market_cap": 1734131271030,
+          "tag": "消费龙头·白酒定价权",
+          "href": "https://www.futunn.com/stock/600519-SH"
+        },
+        {
+          "symbol": "TSLA",
+          "name": "特斯拉",
+          "price": 389.37,
+          "change": -3.14,
+          "chg_pct": -0.8,
+          "volume": 47780631,
+          "amount": 18830450176,
+          "market_cap": 1462366203651,
+          "tag": "FSD入华审批·储能翻倍",
+          "href": "https://www.futunn.com/stock/TSLA-US"
+        },
+        {
+          "symbol": "BA",
+          "name": "波音",
+          "price": 224.38,
+          "change": 3.08,
+          "chg_pct": 1.39,
+          "volume": 3852073,
+          "amount": 863635088,
+          "market_cap": 176879277030,
+          "tag": "737MAX复产·国防订单",
+          "href": "https://www.futunn.com/stock/BA-US"
+        },
+        {
+          "symbol": "NIO",
+          "name": "蔚来",
+          "price": 5.9,
+          "change": -0.17,
+          "chg_pct": -2.8,
+          "volume": 30199403,
+          "amount": 181463646,
+          "market_cap": 14783435430,
+          "tag": "交付回暖·换电网络扩张",
+          "href": "https://www.futunn.com/stock/NIO-US"
+        },
+        {
+          "symbol": "PLTR",
+          "name": "Palantir",
+          "price": 135.91,
+          "change": -10.12,
+          "chg_pct": -6.93,
+          "volume": 89747094,
+          "amount": 12350062080,
+          "market_cap": 325818670794,
+          "tag": "国防AI订单·AIP落地",
+          "href": "https://www.futunn.com/stock/PLTR-US"
+        }
+      ]
+    }
+  ],
+  "commodities": {
+    "gold": {
+      "price": 4609.38,
+      "change": 53.02,
+      "chg_pct": 1.16,
+      "symbol": "XAU/USD",
+      "high": 4630,
+      "low": 4550,
+      "source": "futunn"
+    },
+    "wti": {
+      "price": 101.06,
+      "change": -1.21,
+      "chg_pct": -1.18,
+      "symbol": "WTI",
+      "source": "futunn"
+    },
+    "brent": {
+      "price": 108.75,
+      "change": -1.12,
+      "chg_pct": -1.02,
+      "symbol": "BRENT",
+      "source": "futunn"
+    },
+    "usdcny": {
+      "price": 6.8218,
+      "change": -0.0063,
+      "chg_pct": -0.09,
+      "symbol": "USD/CNH",
+      "source": "futunn"
+    },
+    "silver": {
+      "price": 76.1,
+      "change": 0.85,
+      "chg_pct": 1.13,
+      "symbol": "XAG/USD",
+      "high": 77.2,
+      "low": 74.8,
+      "source": "Swissquote"
+    },
+    "copper": {
+      "price": 4.85,
+      "change": -0.03,
+      "chg_pct": -0.62,
+      "symbol": "XCU/USD",
+      "high": 4.92,
+      "low": 4.78,
+      "source": "Swissquote (approx)"
+    }
+  },
+  "analysis": "<strong>铜（XCU/USD）</strong>：报 $4.85，日内 -0.62%。作为\"铜博士\"（经济领先指标），铜价小幅回落反映市场对全球工业需求的谨慎预期。铜金比当前约 0.11%（$4.85/$4,609），位于历史低位，暗示经济复苏预期偏弱。<br>\n<strong>白银（XAG/USD）</strong>：报 $76.10，日内 +1.13%。白银跟随黄金同步走强。白银工业需求端（光伏/电子）为其提供额外支撑。若后续工业需求回暖，白银弹性通常大于黄金。<br>\n<strong>黄金（XAU/USD）</strong>：报 $4,609，日内 +1.16%。$4,620 为短期阻力，突破则看 $4,700。$4,550 为下方支撑。避险买盘持续推动金价走高，央行购金需求为长期底部支撑。<br>\n<strong>原油（WTI/Brent）</strong>：WTI $101.06（-1.18%），布伦特 $108.75（-1.02%），价差 $7.69。OPEC+ 连续增产施压油价。技术面 WTI 失守 $105 后下一支撑位 $98。<br>\n<strong>金油比</strong>：当前 45.6（XAU $4,609 / WTI $101.06），高于历史均值 25-35。地缘溢价仍在。若中东局势缓和，金油比向均值回归概率增大。<br>\n<strong>金银铜比分析</strong>：金银比 60.5（金 $4,609 / 银 $76.10）处于偏高位置 → 避险情绪主导（金强银弱）。铜金比 0.11%（铜 $4.85 / 金 $4,609）处于低位 → 经济复苏预期偏弱。若后续金银比回落至 55 以下同时铜金比回升，则为全球工业需求回暖的早期信号。<br>\n<strong>美元指数/离岸人民币</strong>：DXY 维持 99-100 区间低位徘徊。USD/CNH 报 6.8218（-0.09%），人民币温和走强。美联储 5/7 利率决议是核心变量，若释放鹰派信号，美元阶段性反弹将冲击北向资金。<br>\n<strong>费城半导体指数（SOX）</strong>：报 10,980.58，日内 +4.23%，延续强势。存储芯片、AI 芯片热度不减。SOX 走强直接映射 A 股半导体 ETF / 科创 ETF。韩股（三星市值破万亿）、日股半导体设备股同步大涨，全球芯片景气周期确立。",
+  "risks": [
+    {
+      "title": "霍尔木兹海峡通行管制升级",
+      "desc": "伊朗革命卫队已对海峡过往船只实施统一管理，美国警告将采取军事回应。若封锁持续，原油供应风险骤增，WTI或重返$105+。",
+      "href": "https://www.cls.cn/detail/2362652"
+    },
+    {
+      "title": "美联储5月利率决议（5/7）",
+      "desc": "市场预期维持利率不变，但通胀走高叠加关税影响，鲍威尔表态或偏鹰。美股高位回调压力积聚。",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "title": "存储芯片板块过热回调",
+      "desc": "三星市值达万亿美元，SK海力士年内涨3倍，A股半导体ETF已连续大涨。短期获利回吐压力增大，警惕板块集体回调。",
+      "href": "https://www.cls.cn/detail/2363755"
+    },
+    {
+      "title": "A股节后板块轮动加速",
+      "desc": "科创板ETF（+5.02%）/半导体ETF（+4.91%）领涨，但大消费权重股滞涨。若量能不能持续放大，风格切换可能引发中小盘剧烈波动。",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "title": "美债收益率曲线倒挂加深",
+      "desc": "2年期与10年期美债利差持续扩大，衰退信号强化。若收益率维持倒挂，银行股和金融板块将承压。",
+      "href": "https://www.cls.cn/telegraph"
+    }
+  ],
+  "events": [
+    {
+      "date": "05.05 周二",
+      "event": "美国ISM制造业PMI",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "date": "05.05 周二",
+      "event": "韩国KOSPI突破7000点",
+      "href": "https://www.cls.cn/detail/2363234"
+    },
+    {
+      "date": "05.06 周三",
+      "event": "伊朗外长访华",
+      "href": "https://www.cls.cn/detail/2363236"
+    },
+    {
+      "date": "05.06 周三",
+      "event": "A股节后复盘·5月开门红",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "date": "05.07 周四",
+      "event": "美联储利率决议",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "date": "05.07 周四",
+      "event": "鲍威尔新闻发布会",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "date": "05.08 周五",
+      "event": "中国4月CPI/PPI数据",
+      "href": "https://www.cls.cn/telegraph"
+    },
+    {
+      "date": "05.08 周五",
+      "event": "美国4月非农就业",
+      "href": "https://www.cls.cn/telegraph"
+    }
+  ],
+  "sparklines": {
+    "SPX": "M2.0,28.0 L3.7,22.1 L5.3,22.3 L7.0,22.7 L8.6,26.0 L10.3,19.3 L11.9,18.3 L13.6,19.9 L15.2,17.6 L16.9,17.2 L18.5,18.3 L20.2,14.9 L21.8,15.8 L23.5,11.1 L25.1,8.8 L26.8,7.2 L28.4,7.3 L30.1,5.9 L31.7,5.2 L33.4,4.0 L35.0,6.7 L36.7,7.9 L38.3,5.0 L40.0,4.3 L41.7,6.1 L43.3,6.7 L45.0,8.6 L46.6,9.4 L48.3,9.0 L49.9,7.2 L51.6,8.7 L53.2,6.6 L54.9,7.3 L56.5,6.4 L58.2,7.4 L59.8,6.0 L61.5,7.7 L63.1,8.5 L64.8,8.9 L66.4,8.9 L68.1,9.8 L69.7,12.0 L71.4,13.2 L73.0,9.8 L74.7,8.0 L76.3,8.9 L78.0,8.3",
+    "SPX_color": "#FF4060",
+    "NDX": "M2.0,28.0 L3.7,22.0 L5.3,21.0 L7.0,19.7 L8.6,21.9 L10.3,15.4 L11.9,16.7 L13.6,19.1 L15.2,14.7 L16.9,14.7 L18.5,17.9 L20.2,14.5 L21.8,16.4 L23.5,11.6 L25.1,9.7 L26.8,9.5 L28.4,9.0 L30.1,8.1 L31.7,8.6 L33.4,8.4 L35.0,8.9 L36.7,10.5 L38.3,7.8 L40.0,6.4 L41.7,7.3 L43.3,7.3 L45.0,8.0 L46.6,7.8 L48.3,7.7 L49.9,7.1 L51.6,7.7 L53.2,6.1 L54.9,5.6 L56.5,4.3 L58.2,6.0 L59.8,4.5 L61.5,5.4 L63.1,6.7 L64.8,6.5 L66.4,6.6 L68.1,7.4 L69.7,9.2 L71.4,9.0 L73.0,6.0 L74.7,4.8 L76.3,4.8 L78.0,4.0",
+    "NDX_color": "#FF4060",
+    "DJI": "M2.0,18.7 L3.7,21.7 L5.3,18.8 L7.0,23.2 L8.6,26.9 L10.3,25.2 L11.9,15.9 L13.6,18.2 L15.2,26.3 L16.9,20.8 L18.5,12.4 L20.2,14.5 L21.8,13.5 L23.5,15.0 L25.1,14.6 L26.8,9.2 L28.4,10.4 L30.1,8.8 L31.7,4.5 L33.4,4.2 L35.0,9.7 L36.7,8.8 L38.3,8.6 L40.0,10.3 L41.7,11.7 L43.3,13.3 L45.0,15.1 L46.6,17.9 L48.3,16.6 L49.9,13.2 L51.6,17.2 L53.2,16.6 L54.9,20.1 L56.5,21.6 L58.2,19.5 L59.8,17.0 L61.5,19.8 L63.1,18.3 L64.8,19.2 L66.4,18.8 L68.1,19.3 L69.7,20.4 L71.4,22.9 L73.0,19.2 L74.7,18.6 L76.3,21.3 L78.0,22.2",
+    "DJI_color": "#00C853",
+    "VIX": "M2.0,4.3 L3.9,4.0 L5.9,4.8 L7.8,6.1 L9.8,6.9 L11.7,7.3 L13.7,8.3 L15.6,9.0 L17.6,8.2 L19.5,8.6 L21.5,10.5 L23.4,9.8 L25.4,11.7 L27.3,11.4 L29.3,11.0 L31.2,13.3 L33.2,12.3 L35.1,13.6 L37.1,14.2 L39.0,14.5 L41.0,15.6 L42.9,15.6 L44.9,15.4 L46.8,16.9 L48.8,17.6 L50.7,17.9 L52.7,19.0 L54.6,19.7 L56.6,18.8 L58.5,21.0 L60.5,19.9 L62.4,21.4 L64.4,21.1 L66.3,23.1 L68.3,22.5 L70.2,24.0 L72.2,24.4 L74.1,24.0 L76.1,24.7 L78.0,28.0",
+    "VIX_color": "#00C853",
+    "SH": "M2.0,25.0 L3.9,27.7 L5.8,21.7 L7.7,21.5 L9.6,17.0 L11.5,15.8 L13.4,13.2 L15.3,11.0 L17.2,11.7 L19.1,8.2 L21.0,7.6 L22.9,10.1 L24.8,9.7 L26.7,10.0 L28.6,12.1 L30.5,11.2 L32.4,12.4 L34.3,12.9 L36.2,12.9 L38.1,10.0 L40.0,9.2 L41.9,7.5 L43.8,5.3 L45.7,5.8 L47.6,5.0 L49.5,4.7 L51.4,5.5 L53.3,6.1 L55.2,7.1 L57.1,6.5 L59.0,7.2 L60.9,9.4 L62.8,7.1 L64.7,6.2 L66.6,5.7 L68.5,6.6 L70.4,6.6 L72.3,11.2 L74.2,15.8 L76.1,18.3 L78.0,13.7",
+    "SH_color": "#FF4060",
+    "SZ": "M2.0,22.2 L3.9,26.5 L5.8,22.2 L7.7,16.7 L9.6,13.6 L11.5,13.7 L13.4,13.1 L15.3,13.3 L17.2,12.4 L19.1,7.5 L21.0,9.2 L22.9,9.9 L24.8,10.1 L26.7,9.2 L28.6,10.6 L30.5,10.3 L32.4,11.1 L34.3,11.6 L36.2,12.0 L38.1,9.7 L40.0,9.8 L41.9,8.3 L43.8,7.0 L45.7,6.8 L47.6,7.3 L49.5,4.8 L51.4,4.8 L53.3,5.7 L55.2,7.5 L57.1,8.9 L59.0,9.6 L60.9,10.9 L62.8,7.2 L64.7,6.8 L66.6,6.9 L68.5,7.7 L70.4,7.4 L72.3,10.2 L74.2,13.0 L76.1,14.6 L78.0,12.1",
+    "SZ_color": "#FF4060",
+    "CY": "M2.0,18.5 L3.9,26.2 L5.8,22.7 L7.7,15.1 L9.6,12.2 L11.5,11.4 L13.4,10.9 L15.3,11.8 L17.2,11.2 L19.1,5.1 L21.0,6.9 L22.9,7.9 L24.8,8.0 L26.7,7.8 L28.6,9.7 L30.5,9.4 L32.4,10.8 L34.3,11.8 L36.2,12.5 L38.1,9.9 L40.0,10.5 L41.9,9.2 L43.8,7.7 L45.7,7.1 L47.6,8.5 L49.5,5.1 L51.4,4.9 L53.3,5.8 L55.2,8.4 L57.1,10.1 L59.0,11.6 L60.9,12.6 L62.8,8.2 L64.7,8.8 L66.6,9.0 L68.5,10.1 L70.4,9.9 L72.3,13.2 L74.2,15.5 L76.1,16.4 L78.0,14.5",
+    "CY_color": "#FF4060",
+    "HK": "M2.0,16.9 L3.9,25.4 L5.8,22.8 L7.7,19.2 L9.6,14.0 L11.5,12.8 L13.4,12.4 L15.3,13.0 L17.2,11.9 L19.1,9.3 L21.0,6.0 L22.9,7.0 L24.8,8.6 L26.7,9.6 L28.6,13.0 L30.5,12.8 L32.4,10.1 L34.3,12.7 L36.2,12.5 L38.1,12.8 L40.0,11.5 L41.9,7.2 L43.8,4.5 L45.7,6.7 L47.6,7.7 L49.5,8.9 L51.4,11.4 L53.3,14.2 L55.2,14.6 L57.1,13.0 L59.0,11.3 L60.9,9.4 L62.8,10.3 L64.7,7.8 L66.6,8.5 L68.5,10.2 L70.4,10.6 L72.3,13.2 L74.2,13.2 L76.1,15.4 L78.0,14.6",
+    "HK_color": "#FF4060"
+  }
+}
