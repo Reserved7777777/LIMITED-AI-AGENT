@@ -73,21 +73,11 @@ def extract(text, key):
         if high: result['high'] = high
         if low: result['low'] = low
         result['source'] = 'futunn_browser'
-    # VIX spot override
-    if 'VIX' in key:
-        v = re.search(r'\.VIX\s*([\d.]+)\s*([+-][\d.]+)\s*([+-][\d.]+)%', text)
-        if v and result.get('price'):
-            spot_price = float(v.group(1))
-            spot_change = float(v.group(2))
-            spot_pct = float(v.group(3).replace('%',''))
-            result['price'] = spot_price
-            result['change'] = spot_change
-            result['chg_pct'] = spot_pct
-            result['source'] = 'futunn_browser_vix'
-            if spot_pct != 0:
-                result['prev_close'] = round(spot_price / (1 + spot_pct/100), 2)
-            else:
-                result['prev_close'] = round(spot_price - spot_change, 2)
+    # VIX: use the raw futures price (top value on page), NOT .VIX spot override
+    # User explicitly requested: "不要用 .VIX的值用最上面的第一个值"
+    # Update source label to indicate it's the futures contract
+    if 'VIX' in key and result.get('price'):
+        result['source'] = 'futunn_browser'
     return result if result.get('price') else None
 
 
