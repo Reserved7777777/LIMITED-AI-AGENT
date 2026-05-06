@@ -579,7 +579,18 @@ def build_report(date_str, template_path, output_path, data_json=None):
     </li>\n    '''
         new_risk = f'<div class="risk-list">\n    {risk_items}</div>'
         html = _replace_tag(html, 'risk-list', new_risk, tag='ul')
-        html = _replace_tag(html, 'risk-list', new_risk, tag='div')
+        # Self-heal: if risk sec-label went missing, rebuild via markers
+        if '关键风险提示' not in html:
+            full_risk = (
+                '<!-- ===== RISK ===== -->\n'
+                '  <div class="sec-label">\n    <span>⚠️ 关键风险提示</span>\n  </div>\n'
+                f'  <div class="risk-list">\n    {risk_items}</div>'
+            )
+            # Use EVENTS marker as end boundary
+            _s = html.find('<!-- ===== RISK ===== -->')
+            _e = html.find('<!-- ===== EVENTS ===== -->')
+            if _s >= 0 and _e > _s:
+                html = html[:_s] + full_risk + html[_e:]
         print(f"  Risks: replaced ({len(risks)} items)")
     
     # 9. Events
@@ -594,6 +605,30 @@ def build_report(date_str, template_path, output_path, data_json=None):
         new_ev = f'<div class="events">\n    {ev_html}</div>'
         html = _replace_tag(html, 'events', new_ev)
         print(f"  Events: replaced ({len(events)} items)")
+    
+    # ============================================================
+    # SELF-CHECK: verify all section markers exist
+    # ============================================================
+    _required_markers = [
+        '<!-- HEADER -->',
+        '<!-- ===== INDICES ===== -->',
+        '<!-- STANCE -->',
+        '<!-- INSIGHT -->',
+        '<!-- ===== TIER 1 ===== -->',
+        '<!-- ===== TIER 2 ===== -->',
+        '<!-- ===== TIER 3 ===== -->',
+        '<!-- ===== COMMODITY & FX ===== -->',
+        '<!-- ANALYSIS -->',
+        '<!-- ===== RISK ===== -->',
+        '⚠️ 关键风险提示',
+        '<!-- ===== EVENTS ===== -->',
+        '<!-- FOOTER -->',
+    ]
+    _missing = [m for m in _required_markers if m not in html]
+    if _missing:
+        print(f"  ⚠️  SELF-CHECK: missing markers: {_missing}", file=sys.stderr)
+    else:
+        print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers present")
     
     # ============================================================
     # WRITE OUTPUT
