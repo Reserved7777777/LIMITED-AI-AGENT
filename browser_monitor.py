@@ -91,9 +91,9 @@ def extract(text, key):
     return result if result.get('price') else None
 
 
-def extract_spark_from_canvas(page, target_points=150):
-    """Extract chart line from futunn canvas via screenshot + PIL weighted centroid analysis.
-    Uses column-wise weighted centroid for sub-pixel accuracy (reduces stair-stepping).
+def extract_spark_from_canvas(page, target_points=73):
+    """Extract chart line from futunn canvas via screenshot + per-column max-saturation.
+    Uses the proven approach: per-column max-saturation pixel + median filter + 73pt sampling.
     Returns SVG path string matching viewBox='0 -4 80 32'."""
     if Image is None:
         print("  WARN: PIL not installed, cannot extract sparkline", file=sys.stderr)
@@ -111,98 +111,87 @@ def extract_spark_from_canvas(page, target_points=150):
         if w < 50 or h < 50:
             return None
         
-        # Convert to column-major pixel arrays
+        # Column-major pixel arrays
         pixel_data = list(img.getdata())
         col_pixels = [[] for _ in range(w)]
         for i, rgb in enumerate(pixel_data):
             col_pixels[i % w].append(rgb)
         
-        # For each column, compute weighted centroid of chart-line pixels
-        # This gives sub-pixel accuracy vs the single max-saturation picking
-        raw_pts = []
+        # For each column, find the chart line position via max saturation
+        # This picks the single most saturated non-white pixel = center of the chart line
+        # More stable than weighted centroid which picks up noise from anti-aliased edges
+        col_pts = []
         for col in range(w):
-            centroid_y = 0.0
-            total_weight = 0.0
+            best_y = -1
+            best_score = 0
             for row in range(h):
                 r, g, b = col_pixels[col][row]
-                # Skip near-white background pixels
-                if r > 230 and g > 230 and b > 230:
+                # Skip near-white (background)
+                if r > 240 and g > 240 and b > 240:
                     continue
-                # Skip near-black axis/grid pixels
-                if r < 30 and g < 30 and b < 30:
+                # Skip near-black (axis, grid lines, labels)
+                if r < 25 and g < 25 and b < 25:
                     continue
+                # Color saturation
                 mn = min(r, g, b)
                 mx = max(r, g, b)
                 sat = mx - mn
                 brightness = (r + g + b) / 3.0
-                # Chart line pixels have moderate saturation + mid brightness (anti-aliased)
-                if sat > 12 and brightness > 25 and brightness < 240:
-                    weight = sat * (brightness / 255.0)
-                    centroid_y += row * weight
-                    total_weight += weight
-            if total_weight > 0:
-                raw_pts.append(centroid_y / total_weight)
-            else:
-                raw_pts.append(None)
+                if sat > 15 and brightness > 30:
+                    score = sat * (brightness / 255.0)
+                    if score > best_score:
+                        best_score = score
+                        best_y = row
+            col_pts.append(best_y if best_y >= 0 else None)
         
-        # Interpolate None gaps
-        valid = [i for i, v in enumerate(raw_pts) if v is not None]
+        # Fill None gaps by linear interpolation
+        valid = [i for i, v in enumerate(col_pts) if v is not None]
         if len(valid) < 5:
             return None
-        for i in range(len(raw_pts)):
-            if raw_pts[i] is None:
+        for i in range(len(col_pts)):
+            if col_pts[i] is None:
                 before = [j for j in valid if j < i]
                 after = [j for j in valid if j > i]
                 if before and after:
                     b, a = before[-1], after[0]
-                    raw_pts[i] = raw_pts[b] + (raw_pts[a] - raw_pts[b]) * (i - b) / (a - b)
+                    col_pts[i] = int(col_pts[b] + (col_pts[a] - col_pts[b]) * (i - b) / (a - b))
                 elif before:
-                    raw_pts[i] = raw_pts[before[-1]]
-                else:
-                    raw_pts[i] = raw_pts[after[0]]
+                    col_pts[i] = col_pts[before[-1]]
+                elif after:
+                    col_pts[i] = col_pts[after[0]]
         valid.sort()
-        ys = [raw_pts[i] for i in valid]
+        ys = [col_pts[i] for i in valid]
         xs = valid
         
-        # Weighted moving average (3-point, centered) to smooth centroid noise
-        # preserves sawtooth shape while removing single-pixel jitter
-        window_len = 3
-        half_w = window_len // 2
-        smoothed_ys = list(ys)
-        for i in range(1, len(ys) - 1):
-            w_vals = ys[i-1:i+2]
-            smoothed_ys[i] = (w_vals[0] * 0.5 + w_vals[1] * 1.0 + w_vals[2] * 0.5) / 2.0
-        ys = smoothed_ys
+        # Median filter window=7 — proven effective at removing single-pixel noise
+        # while preserving sawtooth character
+        half = 3
+        filtered = list(ys)
+        for i in range(len(ys)):
+            start = max(0, i - half)
+            end = min(len(ys), i + half + 1)
+            window_vals = sorted(ys[start:end])
+            filtered[i] = window_vals[len(window_vals) // 2]
+        ys = filtered
         
-        # Downsample to target_points
+        # Downsample to target_points (73)
         if len(ys) > target_points:
             indices = [int(i * (len(ys) - 1) / (target_points - 1)) for i in range(target_points)]
-            ys_sampled = [ys[i] for i in indices]
-            xs_sampled = [xs[i] for i in indices]
-        else:
-            ys_sampled, xs_sampled = ys, xs
+            ys = [ys[i] for i in indices]
+            xs = [xs[i] for i in indices]
         
-        # Trim 5% from edges to avoid axis-label interference
-        trim = max(1, int(len(ys_sampled) * 0.05))
-        if len(ys_sampled) > trim * 2 + 5:
-            ys_sampled = ys_sampled[trim:-trim]
-            xs_sampled = xs_sampled[trim:-trim]
-        
-        # Normalize to sparkline viewBox="0 -4 80 32"
-        # viewBox 0 -4 80 32 → x:0-80, y:-4 to 28 (total height 32)
-        min_y, max_y = min(ys_sampled), max(ys_sampled)
+        # Map to viewBox="0 -4 80 32": x:0-80, y:-4(top) to 28(bottom)
+        min_y, max_y = min(ys), max(ys)
         y_range = max_y - min_y if max_y != min_y else 1
-        min_sx, max_sx = min(xs_sampled), max(xs_sampled)
+        min_sx, max_sx = min(xs), max(xs)
         x_range = max_sx - min_sx if max_sx != min_sx else 1
-        
         margin = 2
         def nx(sx): return margin + (sx - min_sx) / x_range * (80 - 2 * margin)
-        # Map image y (0=top, h=bottom) to SVG y (-4=top, 28=bottom) inside viewBox 0 -4 80 32
         def ny(sy): return -4 + (sy - min_y) / y_range * 32
         
-        path = 'M{:.2f},{:.2f}'.format(nx(xs_sampled[0]), ny(ys_sampled[0]))
-        for sxi, syi in zip(xs_sampled[1:], ys_sampled[1:]):
-            path += ' L{:.2f},{:.2f}'.format(nx(sxi), ny(syi))
+        path = 'M{:.1f},{:.1f}'.format(nx(xs[0]), ny(ys[0]))
+        for sxi, syi in zip(xs[1:], ys[1:]):
+            path += ' L{:.1f},{:.1f}'.format(nx(sxi), ny(syi))
         return path
         
     except Exception as e:
