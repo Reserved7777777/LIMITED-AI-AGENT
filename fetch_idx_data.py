@@ -415,8 +415,8 @@ def monitor_futunn_pages():
         for key, val in snap.get('indices', {}).items():
             if val.get('price'):
                 indices_data[key] = val
-        if len(indices_data) >= 6:
-            print('  Using browser snapshot (' + str(len(indices_data)) + ' indices)', file=sys.stderr)
+        if len(indices_data) >= 1:
+            print('  Browser snapshot: ' + str(len(indices_data)) + ' indices', file=sys.stderr)
             return indices_data
     except Exception as e:
         print('  Browser snapshot error: ' + str(e), file=sys.stderr)
