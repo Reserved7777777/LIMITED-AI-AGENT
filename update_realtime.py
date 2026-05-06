@@ -314,9 +314,9 @@ def sync_analysis(html):
         if cfx_end >= 0:
             cfx_end = html.find('\n', cfx_end + 8)  # line after </div>
             # After cfx grid, there's the analysis text, then risk-list
-            risk_start = html.find('<div class="risk-list">', cfx_end)
+            risk_start = html.find('<!-- ===== RISK ===== -->', cfx_end)
             if risk_start < 0:
-                risk_start = html.find('<!-- ===== RISK', cfx_end)
+                risk_start = html.find('<div class="risk-list">', cfx_end)
             if risk_start >= 0 and risk_start > cfx_end:
                 html = html[:cfx_end] + '\n' + new_html + '\n' + html[risk_start:]
                 print("  Analysis synced")
