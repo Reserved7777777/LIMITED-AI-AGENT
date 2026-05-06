@@ -590,6 +590,54 @@ def main():
     # 8. Analysis section — sync with current commodity prices
     html = sync_analysis(html)
     
+# ============================================================
+    # 9. HTML SELF-CHECK — verify all markers, auto-repair if broken
+    # ============================================================
+    _required_markers = [
+        '<!-- HEADER -->',
+        '<!-- ===== INDICES ===== -->',
+        '<!-- STANCE -->',
+        '<!-- INSIGHT -->',
+        '<!-- ===== TIER 1 ===== -->',
+        '<!-- ===== TIER 2 ===== -->',
+        '<!-- ===== TIER 3 ===== -->',
+        '<!-- ===== COMMODITY & FX ===== -->',
+        '<!-- ANALYSIS -->',
+        '<!-- ===== RISK ===== -->',
+        '⚠️ 关键风险提示',
+        '<!-- ===== EVENTS ===== -->',
+        '<!-- FOOTER -->',
+    ]
+    _missing = [m for m in _required_markers if m not in html]
+    if _missing:
+        print(f"  ⚠️  SELF-CHECK: missing {len(_missing)} markers: {', '.join(_missing)}", file=sys.stderr)
+        # Auto-repair: rebuild report using build_report.py with cached data
+        _date = date
+        _cache_path = f'/tmp/report-data-{_date}.json'
+        if os.path.exists(_cache_path):
+            print(f"  Auto-repair: rebuilding report from {_cache_path}", file=sys.stderr)
+            import subprocess as _sp
+            _r = _sp.run(
+                ['python3', '/root/.openclaw/workspace/build_report.py',
+                 '--date', _date, '--data', _cache_path],
+                capture_output=True, text=True, timeout=90
+            )
+            if _r.returncode == 0:
+                # Re-read the repaired HTML
+                with open(html_path, 'r') as _rf:
+                    html = _rf.read()
+                print(f"  ✅ Auto-repair: report rebuilt successfully")
+                # Re-check
+                _still_missing = [m for m in _required_markers if m not in html]
+                if _still_missing:
+                    print(f"  ⚠️  Auto-repair partial: still missing {_still_missing}", file=sys.stderr)
+            else:
+                print(f"  ❌ Auto-repair failed: {_r.stderr[:200]}", file=sys.stderr)
+        else:
+            print(f"  ⚠️  Auto-repair: no cache at {_cache_path}, skipping", file=sys.stderr)
+    else:
+        print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers OK")
+
     # Write updated HTML
     with open(html_path, 'w') as f:
         f.write(html)
