@@ -427,10 +427,12 @@ def monitor_futunn_pages():
 # SPARKLINE GENERATION
 # ============================================================
 def gen_sparkline_svg(prices, width=80, height=32):
-    """Generate SVG path from price array."""
+    """Generate SVG path from price array.
+    
+    Maps to viewBox='0 -4 80 32' (y: -4 top, 28 bottom, 32 total).
+    """
     if not prices or len(prices) < 2:
-        # Return flat line
-        mid = height / 2
+        mid = -4 + height / 2
         return f"M1,{mid} L{width-1},{mid}"
     
     n = len(prices)
@@ -440,35 +442,52 @@ def gen_sparkline_svg(prices, width=80, height=32):
     if rng == 0:
         rng = 1
     
-    # Downsample to fit width (about 2px per point)
+    # Downsample to ~40 points (~2px per point over 80px width)
     pts_needed = min(n, width // 2)
     step = max(1, n // pts_needed)
     sampled = prices[::step]
     if sampled[-1] != prices[-1]:
-        with_append = sampled[:]
-        with_append.append(prices[-1])
-        sampled = with_append
+        sampled = sampled[:] + [prices[-1]]
     
     n2 = len(sampled)
     points = []
     for i, p in enumerate(sampled):
         x = round((i / (n2 - 1)) * (width - 4) + 2, 1) if n2 > 1 else width / 2
-        y = round(height - 4 - ((p - min_p) / rng) * (height - 8), 1)
+        # Map price to viewBox y: -2(top) to 26(bottom)
+        # Leave 2px margin top/bottom so no point hits the viewBox edge
+        y = round(-2 + ((max_p - p) / rng) * 24, 1)
+        # Clamp to safe bounds (within 1px of edge at most)
+        if y < -3.5: y = -3.5
+        if y > 27.5: y = 27.5
         points.append(f"{x},{y}")
     return "M" + " L".join(points)
 
-def gen_sparkline_from_ohlc(open_p, high_p, low_p, close_p, points=40, width=80, height=32):
-    """Generate synthetic sparkline path from OHLC with minimal noise."""
+def gen_sparkline_from_ohlc(open_p, high_p, low_p, close_p, points=73, width=80, height=32):
+    """Generate realistic sparkline path from OHLC with random walk.
+    
+    Creates a random walk between open and close that touches high/low,
+    producing a more realistic intraday chart appearance.
+    Uses more points (73) to even out the SVG path.
+    """
+    import random as _r
+    rng = high_p - low_p if high_p > low_p else abs(close_p - open_p) * 0.02
+    amp = max(rng, 0.01)
+    
     prices = [open_p]
     for i in range(1, points - 1):
         progress = i / (points - 1)
-        target = open_p + (close_p - open_p) * progress * 0.9  # slight curve toward close
-        # Small noise ~10% of daily range
-        rng = high_p - low_p if high_p > low_p else abs(close_p - open_p) * 0.02
-        noise_amp = max(rng, 0.01) * 0.08
-        import random as _r
-        noise = (_r.random() - 0.5) * noise_amp
-        prices.append(target + noise)
+        # Target drifts toward close
+        target = open_p + (close_p - open_p) * progress
+        # Random walk with step proportional to range
+        step = amp * (_r.random() - 0.5) * 0.35
+        prev = prices[-1]
+        # Pull toward target (stronger near ends)
+        pull = (target - prev) * 0.15
+        next_val = prev + step + pull
+        # Clamp within bounds with some margin
+        margin = amp * 0.05
+        next_val = max(low_p + margin, min(high_p - margin, next_val))
+        prices.append(next_val)
     prices.append(close_p)
     return gen_sparkline_svg(prices, width, height)
 

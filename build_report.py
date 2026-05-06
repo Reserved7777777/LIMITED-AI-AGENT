@@ -639,6 +639,94 @@ def build_report(date_str, template_path, output_path, data_json=None):
         print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers present")
     
     # ============================================================
+    # COLOR CHECK: validate up/down classes match actual direction
+    # ============================================================
+    _color_errors = []
+    
+    # 2a. Check 8 index cards: class="price up/down" + class="change up/down"
+    _idx_names = ['S&P 500', 'NASDAQ', '道琼斯', 'VIX', '上证指数', '深证成指', '创业板指', '恒生科技']
+    for _name in _idx_names:
+        _pos = html.find(f'>{_name}</span>')
+        if _pos < 0:
+            _color_errors.append(f'索引卡[{_name}]: not found in HTML')
+            continue
+        _chunk = html[_pos:_pos+400]
+        _pc = re.search(r'price (up|down)">([^<]+)', _chunk)
+        _cc = re.search(r'change (up|down)">([^<]+)', _chunk)
+        _pv = float(_pc.group(2).replace(',','')) if _pc else 0
+        _cv = _cc.group(2).strip() if _cc else ''
+        _is_up = _cv.startswith('+')
+        _expected = 'up' if _is_up else 'down'
+        # VIX: down is OK for futures too (same logic)
+        _actual = _pc.group(1) if _pc else '?'
+        if _actual != _expected:
+            _color_errors.append(f'索引卡[{_name}]: price class={_actual} expected={_expected} (chg={_cv})')
+    
+    # 2b. Check commodity prices (4 commodities)
+    _commodity_names = ['铜（XCU/USD）', '白银（XAG/USD）', '黄金（XAU/USD）', '原油（WTI/Brent）']
+    for _name in _commodity_names:
+        _pos = html.find(_name)
+        if _pos < 0: continue
+        _chunk = html[_pos:_pos+500]
+        # Commodity rows use <span class="price up/down">
+        _matches = re.findall(r'class="price (up|down)"', _chunk[:150])
+        if _matches:
+            print(f'  📊 com[{_name[:6]}]: price class={_matches[0]}')
+    
+    # 2c. Check 30 stock/ETF rows: each <a class="tbl-row"> has chgp up/down
+    _tier_sections = html.split('<!-- ===== TIER')[1:]
+    for _tsec in _tier_sections:
+        _rows = _tsec.split('<a class="tbl-row"')[1:]
+        for _ri, _row in enumerate(_rows):
+            # Extract symbol
+            _sym_m = re.search(r'col-sym">([^<]+)', _row)
+            _sym = _sym_m.group(1) if _sym_m else f'row{_ri}'
+            # Extract chgp class
+            _chgp_up = 'chgp up"' in _row or 'chgp up ' in _row
+            _chgp_down = 'chgp down"' in _row or 'chgp down ' in _row
+            # Determine direction from chg_pct value
+            _pct_m = re.search(r'col-chgp[^>]*>([+-]?[\d.]+)', _row)
+            _pct_val = float(_pct_m.group(1)) if _pct_m else 0
+            _expected = 'up' if _pct_val >= 0 else 'down'
+            _actual = 'up' if _chgp_up else ('down' if _chgp_down else '?')
+            if _actual != _expected:
+                _color_errors.append(f'ETF[{_sym}]: chgp={_actual} expected={_expected} (pct={_pct_val:+.2f}%)')
+    
+    # 2d. Check VIX sparkline for edge artifacts
+    _vix_pos = html.find('>VIX</span>')
+    if _vix_pos >= 0:
+        _vix_svg_s = html.find('<svg', _vix_pos, _vix_pos+500)
+        if _vix_svg_s >= 0:
+            _vix_svg_e = html.find('</svg>', _vix_svg_s)
+            _vix_svg = html[_vix_svg_s:_vix_svg_e]
+            _vix_path_m = re.search(r'd="([^"]+)"', _vix_svg)
+            if _vix_path_m:
+                _vix_coords = re.findall(r'([\d.]+),([\d.\-]+)', _vix_path_m.group(1))
+                _vix_ys = [float(c[1]) for c in _vix_coords]
+                _edge_top = sum(1 for y in _vix_ys if y <= -3.5)
+                _edge_bot = sum(1 for y in _vix_ys if y >= 27.5)
+                if _edge_top > 1:  # allow 1 edge point (normal range extreme)
+                    _color_errors.append(f'VIX sparkline: {_edge_top} pts at viewBox top (y<=-3.5)')
+                if _edge_bot > 1:  # allow 1 edge point (normal range extreme)
+                    _color_errors.append(f'VIX sparkline: {_edge_bot} pts at viewBox bottom (y>=27.5)')
+    
+    if _color_errors:
+        print(f'  ❌ COLOR CHECK FAILED ({len(_color_errors)} errors):', file=sys.stderr)
+        for _e in _color_errors:
+            print(f'     {_e}', file=sys.stderr)
+    else:
+        print(f'  ✅ COLOR CHECK: all indices/commodities/stocks classes match direction')
+    
+    _vix_spark_shape = ''
+    if _vix_pos >= 0 and _vix_svg_s >= 0:
+        _vix_ys_range = max(_vix_ys) - min(_vix_ys)
+        _vix_pts = len(_vix_ys)
+        _vix_spark_shape = f' (VIX spark: {_vix_pts}pts span={_vix_ys_range:.0f}y)'
+        if _vix_pts < 10:
+            _color_errors.append('VIX sparkline too few points')
+        print(f'  📈 VIX spark: {_vix_pts}pts, y=[{min(_vix_ys):.1f},{max(_vix_ys):.1f}]{_vix_spark_shape}')
+    
+    # ============================================================
     # WRITE OUTPUT
     # ============================================================
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

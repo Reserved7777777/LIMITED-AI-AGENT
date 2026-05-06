@@ -72,13 +72,18 @@ def extract(text, key):
     # VIX: compute OHLC data for sparkline generation
     if 'VIX' in key and result.get('price'):
         result['source'] = 'futunn_browser'
-        # Generate OHLC from extracted data
+        # Generate realistic OHLC from page data
         pc = result.get('prev_close', result['price'])
-        _h = max(result['price'], pc) * 1.001
-        _l = min(result['price'], pc) * 0.999
+        chg_pct = result.get('chg_pct', 0)
+        # Widen range for a more realistic sparkline spread
+        # Typical VIX futures daily range is ~2-3% of price
+        _range = abs(pc - result['price']) * 1.5
+        if _range < 0.05:
+            _range = pc * 0.015  # 1.5% of price as min range
+        _mid = (pc + result['price']) / 2
         result['open'] = round(pc, 2)
-        result['high'] = round(_h, 2)
-        result['low'] = round(_l, 2)
+        result['high'] = round(_mid + _range, 2)
+        result['low'] = round(_mid - _range, 2)
     return result if result.get('price') else None
 
 
