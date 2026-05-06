@@ -575,10 +575,23 @@ def fetch_all_indices():
             if 'VIX' not in results: results['VIX'] = {}
             results['VIX'].update(vix_finn['VIX'])
             print(f"  VIX (Finnhub fill): {vix_finn['VIX'].get('price')}", file=sys.stderr)
-        for key in browser_data:
-            if key not in results:
-                results[key] = browser_data[key]
-                print(f"  {key} (browser fill): OK", file=sys.stderr)
+    # F. Commodities: refresh from browser snapshot (futunn commodity pages)
+    import os as _os
+    snap_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'idx_data', 'browser_snapshot.json')
+    if _os.path.exists(snap_path):
+        try:
+            with open(snap_path) as _f:
+                _snap = json.load(_f)
+            _commodities = _snap.get('commodities', {})
+            for _ck in ['gold', 'wti', 'brent', 'usdcny']:
+                _cd = _commodities.get(_ck, {})
+                if _cd and _cd.get('price'):
+                    if 'commodities' not in results:
+                        results['commodities'] = {}
+                    results['commodities'][_ck] = {'price': _cd['price'], 'change': _cd.get('change', 0), 'chg_pct': _cd.get('chg_pct', 0)}
+                    print(f"  {_ck} (browser): {_cd.get('price')} {_cd.get('change')}", file=sys.stderr)
+        except Exception as _e:
+            print(f"  commodities: snapshot read error {_e}", file=sys.stderr)
     
     return results
 
@@ -668,12 +681,15 @@ def assemble_output(index_data, date_str=None):
             sparklines[key] = f"M1,16 L79,16"
             sparklines[f'{key}_color'] = '#00C853'
     
+    commodities = index_data.get('commodities', {})
     output = {
         'date': date_str,
         'indices': indices_out,
         'sparklines': sparklines,
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
+    if commodities:
+        output['commodities'] = commodities
     return output
 
 # ============================================================
