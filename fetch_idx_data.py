@@ -544,34 +544,37 @@ def fetch_all_indices():
         results.update(hk)
         print(f"  HK (Tencent): OK", file=sys.stderr)
     
-    # D. VIX: browser snapshot (VXMAIN futures) or Finnhub fallback
+    # D. Browser snapshot: extract sparklines from all 8 index page canvases
     browser_data = monitor_futunn_pages()
-    if browser_data and 'VIX' in browser_data:
-        vix = browser_data['VIX']
-        if vix.get('price'):
-            results['VIX'] = vix
-            results['VIX']['source'] = 'futunn_browser'
-            print(f"  VIX (browser): {vix.get('price')}", file=sys.stderr)
-        elif vix.get('spark_path'):
-            if 'VIX' not in results: results['VIX'] = {}
-            results['VIX']['spark_path'] = vix['spark_path']
     
-    if 'VIX' not in results or not results['VIX'].get('price'):
+    # E. Merge browser snapshot spark_path for all indices (canvas = exact page match)
+    # Also fill price/change from browser if API data is missing
+    if browser_data:
+        for bk in ['SPX', 'NDX', 'DJI', 'VIX', 'SH', 'SZ', 'CY', 'HK']:
+            bd = browser_data.get(bk, {})
+            if not bd:
+                continue
+            
+            # Always pass spark_path (canvas-extracted = exact match with page chart)
+            if bd.get('spark_path'):
+                if bk not in results:
+                    results[bk] = {}
+                results[bk]['spark_path'] = bd['spark_path']
+            
+            # Fill price/change from browser if not already set by API
+            if bk not in results or not results.get(bk, {}).get('price'):
+                if bd.get('price'):
+                    results[bk] = bd
+                    results[bk]['source'] = 'browser'
+                    print(f"  {bk} (browser fill): {bd.get('price')}", file=sys.stderr)
+    
+    # E2. VIX fallback: Finnhub if still missing
+    if 'VIX' not in results or not results.get('VIX', {}).get('price'):
         vix_finn = fetch_vix_finnhub()
         if vix_finn:
             if 'VIX' not in results: results['VIX'] = {}
             results['VIX'].update(vix_finn['VIX'])
             print(f"  VIX (Finnhub fill): {vix_finn['VIX'].get('price')}", file=sys.stderr)
-    
-    # E. Merge browser snapshot spark_path for VIX only
-    # For US indices, futunn_init provides better minute data
-    # For A-share/HK, Tencent provides better minute data
-    # Browser snapshot is no longer primary for sparklines (except VIX)
-    if browser_data:
-        if 'VIX' not in results:
-            if 'VIX' in browser_data:
-                results['VIX'] = browser_data['VIX']
-        # For any index still missing, fill from browser data
         for key in browser_data:
             if key not in results:
                 results[key] = browser_data[key]
@@ -612,16 +615,17 @@ def assemble_output(index_data, date_str=None):
             change = entry.get('change', 0)
             chg_pct = entry.get('chg_pct', 0)
             
-            # Generate sparkline — prefer intraday minute data, fallback to canvas path
+            # Generate sparkline — prefer canvas-extracted spark_path (exact page match)
+            # Fallback to minute prices from API, then OHLC synthetic
             spark_path = entry.get('spark_path')
             minute_prices = entry.get('minute_prices', [])
-            if minute_prices and len(minute_prices) >= 5:
-                sparklines[key] = gen_sparkline_svg(minute_prices)
-                sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
-            elif spark_path and key in index_data and 'spark_path' in index_data[key]:
+            if spark_path:
                 sparklines[key] = spark_path
                 change_val = entry.get('change', 0) or entry.get('chg_pct', 0)
                 sparklines[f'{key}_color'] = '#FF4060' if (change_val or 0) >= 0 else '#00C853'
+            elif minute_prices and len(minute_prices) >= 5:
+                sparklines[key] = gen_sparkline_svg(minute_prices)
+                sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
             elif entry.get('open') is not None and entry.get('high') is not None:
                 o = entry['open']
                 h = entry['high']

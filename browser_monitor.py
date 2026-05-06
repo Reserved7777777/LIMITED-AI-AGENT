@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-browser_monitor.py — Monitor VIX (VXMAIN futures) via Playwright (only index needing browser).
-Extracts real-time data + exact chart sparkline from K-line canvas.
+browser_monitor.py — Monitor all 8 index cards via Playwright canvas extraction.
+Extracts exact chart sparklines from each page's canvas for pixel-perfect matching.
+
+Index pages:
+  US: SPX/NDX/DJI → futunn.com/index (line chart, 1 canvas)
+  VIX → futunn.com/futures/VXMAIN-US (K-line chart, 1 canvas)
+  SH/SZ/CY/HK → gu.qq.com (mixed canvases, different layout)
 """
 import json, os, sys, re, time
 from datetime import datetime
@@ -14,231 +19,77 @@ except ImportError:
 ARCHIVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idx_data')
 os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
-INDEX_CARDS = {
-    'VIX': {'url': 'https://www.futunn.com/futures/VXMAIN-US', 'market': 'us', 'symbol': 'VXMAIN'},
-}
+# 8 index cards with their page URLs
+INDEX_PAGES = [
+    ('SPX', 'https://www.futunn.com/index/.SPX-US', 'line'),
+    ('NDX', 'https://www.futunn.com/index/.IXIC-US', 'line'),
+    ('DJI', 'https://www.futunn.com/index/.DJI-US', 'line'),
+    ('VIX', 'https://www.futunn.com/futures/VXMAIN-US', 'kline'),
+    ('SH', 'https://gu.qq.com/sh000001', 'tencent'),
+    ('SZ', 'https://gu.qq.com/sz399001', 'tencent'),
+    ('CY', 'https://gu.qq.com/sz399006', 'tencent'),
+    ('HK', 'https://gu.qq.com/hkHSTECH', 'tencent'),
+]
+
 
 def parse_num(s):
     try: return float(s.strip().replace(',', ''))
     except: return None
 
-def extract(text, key):
-    result = {}
-    lines = [l.strip() for l in text.split('\n') if l.strip()]
-    price = change = chg_pct = high = low = status = None
-    for i, line in enumerate(lines):
-        n = parse_num(line)
-        if n and n > 0 and price is None:
-            price = n
-            continue
-        if price is not None and price != 0:
-            m = re.search(r'^([+-]\d+\.?\d*)([+-]\d+\.?\d*%)', line)
-            if m and change is None:
-                change = float(m.group(1))
-                chg_pct = float(m.group(2).rstrip('%'))
-                continue
-            m = re.search(r'^([+-]\d+\.?\d*)([+-]?\d+\.?\d*%)$', line.replace(' ',''))
-            if m and change is None:
-                change = float(m.group(1))
-                chg_pct = float(m.group(2).rstrip('%'))
-                continue
-            m = re.match(r'^[+-]\d+\.?\d*%$', line)
-            if m and chg_pct is None:
-                chg_pct = float(m.group().rstrip('%'))
-                continue
-        if re.search(r'\u4ea4\u6613|\u6536\u76d8|\u4f11\u5e02|\u7ade\u4ef7', line):
-            status = line
-        if line in ('\u6700\u9ad8\u4ef7', '\u6700\u9ad8', 'HIGH'):
-            if i + 1 < len(lines):
-                n2 = parse_num(lines[i+1])
-                if n2: high = n2
-        if line in ('\u6700\u4f4e\u4ef7', '\u6700\u4f4e', 'LOW'):
-            if i + 1 < len(lines):
-                n2 = parse_num(lines[i+1])
-                if n2: low = n2
-    if price and change is not None:
-        result.update({'price': price, 'change': change, 'chg_pct': chg_pct if chg_pct is not None else 0})
-        if status: result['status'] = status
-        if chg_pct and abs(chg_pct) > 0.001:
-            result['prev_close'] = round(price / (1 + chg_pct/100), 2)
-        elif change:
-            result['prev_close'] = round(price - change, 2)
-        if high: result['high'] = high
-        if low: result['low'] = low
-        result['source'] = 'futunn_browser'
-    return result if result.get('price') else None
 
-
-def _extract_kline_closes(page):
-    """Extract exact K-line closing prices from VXMAIN canvas.
+def _extract_line_spark_raw(page, chart_pct=(0.13, 0.90, 0.10, 0.85)):
+    """Extract sparkline from a LINE chart canvas.
     
-    Key insight: the K-line chart canvas has thick candle bodies, thin wicks,
-    thin text labels, and volume bars at the bottom. By cropping to JUST the
-    candle body area and resizing down to 40 pixels wide, the resize (LANCZOS)
-    averages out all thin elements, leaving only the dense candle bodies.
-    
-    The lowest saturated pixel in each column corresponds to the closing price
-    (bottom of down-candle body for a down day).
-    
-    ViewBox mapping: -4(top = higher price) to 28(bottom = lower price).
+    Uses max-saturation per column (line chart = single colored line on background).
+    Crops to chart area, applies IQR filtering, returns SVG path.
     """
     if Image is None:
-        return None, 0
-    try:
-        el = page.query_selector('.stock-chart-box canvas')
-        if not el:
-            return None, 0
-        raw_bytes = el.screenshot()
-        img = Image.open(BytesIO(raw_bytes))
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        
-        w, h = img.size
-        if w < 100 or h < 50:
-            return None, 0
-        
-        # Crop to chart body area (excludes axis labels, volume bars, gaps)
-        # VXMAIN layout: chart occupies ~10-88% width, ~25-45% height
-        chart = img.crop((
-            int(w * 0.10),   # left: skip Y-axis labels
-            int(h * 0.25),   # top: skip title/gaps above chart
-            int(w * 0.87),   # right: skip right margin
-            int(h * 0.48),   # bottom: skip volume bars
-        ))
-        
-        # Resize to higher resolution for more data points
-        # 80x32 matches the SVG viewBox dimensions exactly
-        # Each pixel averages ~10x4 original pixels - enough to suppress thin
-        # elements (wicks ~2px, text ~1px) but preserve candle bodies (~8-15px)
-        tiny = chart.resize((80, 32), Image.LANCZOS)
-        tw, th = tiny.size
-        
-        # Get pixel data
-        tp = list(tiny.getdata())
-        
-        # For each of 80 columns, find the lowest saturated pixel
-        # After LANCZOS: background ~200-230, candle bodies ~80-170
-        # The bottom of a green candle body = close for down candle
-        closes = []
-        for cx in range(tw):
-            last = None
-            for cy in range(th):
-                r, g, b = tp[cy * tw + cx][:3]
-                # Skip bright/gray background
-                if r > 210 and g > 210 and b > 210:
-                    continue
-                if abs(r-g) < 20 and abs(g-b) < 20 and abs(r-b) < 20:
-                    continue
-                last = cy
-            closes.append(last)
-        
-        # Fill gaps between columns with close data
-        # Interpolate None columns from nearest neighbors
-        valid = [(i, c) for i, c in enumerate(closes) if c is not None]
-        if len(valid) < 5:
-            return None, 0
-        
-        # Build contiguous array with interpolation
-        all_xs, all_ys = zip(*valid)
-        all_ys = list(all_ys)
-        all_xs = list(all_xs)
-        
-        # Median filter (window=3)
-        for i in range(len(all_ys)):
-            s = max(0, i-1)
-            e = min(len(all_ys), i+2)
-            wv = sorted(all_ys[s:e])
-            all_ys[i] = wv[len(wv)//2]
-        
-        # Map to SVG viewBox: 0 -4 80 32
-        min_y, max_y = min(all_ys), max(all_ys)
-        yr = max_y - min_y if max_y != min_y else 1
-        min_x, max_x = min(all_xs), max(all_xs)
-        xr = max_x - min_x if max_x != min_x else 1
-        
-        def nx(sx): return 2 + (sx - min_x) / xr * 76
-        def ny(sy): return -2 + ((sy - min_y) / yr) * 24
-        
-        path = 'M%.1f,%.1f' % (nx(all_xs[0]), ny(all_ys[0]))
-        for xi, yi in zip(all_xs[1:], all_ys[1:]):
-            yv = ny(yi)
-            if yv < -3.5: yv = -3.5
-            if yv > 27.5: yv = 27.5
-            path += ' L%.1f,%.1f' % (nx(xi), yv)
-        
-        return path, len(all_xs)
-        
-    except Exception as e:
-        print("  WARN: _extract_kline_closes error: " + str(e), file=sys.stderr)
-        return None, 0
-
-
-def extract_spark_from_canvas(page, target_points=73):
-    """Extract chart line from futunn canvas via screenshot + per-column max-saturation.
-    Uses the proven approach: per-column max-saturation pixel + median filter + 73pt sampling.
-    Returns SVG path string matching viewBox='0 -4 80 32'."""
-    if Image is None:
-        print("  WARN: PIL not installed, cannot extract sparkline", file=sys.stderr)
         return None
     try:
         el = page.query_selector('.stock-chart-box canvas')
         if not el:
-            return None
-        raw_bytes = el.screenshot()
-        img = Image.open(BytesIO(raw_bytes))
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
+            # Try any canvas on the page
+            canvases = page.query_selector_all('canvas')
+            if not canvases:
+                return None
+            el = canvases[0]
         
+        raw = el.screenshot()
+        img = Image.open(BytesIO(raw))
+        if img.mode != 'RGB': img = img.convert('RGB')
         w, h = img.size
-        if w < 50 or h < 50:
-            return None
+        if w < 50 or h < 50: return None
         
-        pixel_data = list(img.getdata())
-        col_pixels = [[] for _ in range(w)]
-        for i, rgb in enumerate(pixel_data):
-            col_pixels[i % w].append(rgb)
+        pixels = list(img.getdata())
         
-        _crop_left = int(w * 0.10)
-        _crop_right = int(w * 0.90)
+        # Crop to chart area
+        l = int(w * chart_pct[0])
+        r = int(w * chart_pct[1])
+        t = int(h * chart_pct[2])
+        b = int(h * chart_pct[3])
         
+        # Per-column: find most saturated non-white, non-black pixel (chart line)
         col_pts = []
-        for col in range(w):
-            if col < _crop_left or col > _crop_right:
-                col_pts.append(None)
-                continue
+        for col in range(l, r):
             best_y = -1
             best_score = 0
-            for row in range(h):
-                r, g, b = col_pixels[col][row]
-                if r > 240 and g > 240 and b > 240:
-                    continue
-                if r < 25 and g < 25 and b < 25:
-                    continue
-                mn = min(r, g, b)
-                mx = max(r, g, b)
-                sat = mx - mn
-                brightness = (r + g + b) / 3.0
-                if sat > 15 and brightness > 30:
+            for row in range(t, b):
+                rv, gv, bv = pixels[row * w + col][:3]
+                if rv > 240 and gv > 240 and bv > 240: continue
+                if rv < 25 and gv < 25 and bv < 25: continue
+                sat = max(rv, gv, bv) - min(rv, gv, bv)
+                if sat > 15:
+                    brightness = (rv + gv + bv) / 3.0
                     score = sat * (brightness / 255.0)
                     if score > best_score:
                         best_score = score
                         best_y = row
             col_pts.append(best_y if best_y >= 0 else None)
         
+        # IQR filter + interpolation
         valid = [i for i, v in enumerate(col_pts) if v is not None]
-        if len(valid) < 5:
-            return None
-        for i in range(len(col_pts)):
-            if col_pts[i] is None:
-                before = [j for j in valid if j < i]
-                after = [j for j in valid if j > i]
-                if before and after:
-                    b, a = before[-1], after[0]
-                    col_pts[i] = int(col_pts[b] + (col_pts[a] - col_pts[b]) * (i - b) / (a - b))
-                elif before:
-                    col_pts[i] = col_pts[before[-1]]
-                elif after:
-                    col_pts[i] = col_pts[after[0]]
+        if len(valid) < 5: return None
+        _interpolate(col_pts, valid)
         
         _y_vals = [v for v in col_pts if v is not None]
         if _y_vals:
@@ -247,119 +98,296 @@ def extract_spark_from_canvas(page, target_points=73):
             _q1 = _y_sorted[_n // 4]
             _q3 = _y_sorted[3 * _n // 4]
             _iqr = _q3 - _q1 if _q3 > _q1 else max(_y_sorted) - min(_y_sorted) * 0.3
-            _lower = _q1 - 1.5 * _iqr
-            _upper = _q3 + 1.5 * _iqr
-            _lower = max(_lower, 0)
-            _upper = min(_upper, h - 1)
+            _lower = max(_q1 - 1.5 * _iqr, 0)
+            _upper = min(_q3 + 1.5 * _iqr, h - 1)
             for i in range(len(col_pts)):
                 if col_pts[i] is not None and (col_pts[i] < _lower or col_pts[i] > _upper):
                     col_pts[i] = None
             valid = [i for i, v in enumerate(col_pts) if v is not None]
-            if len(valid) < 5:
-                return None
-            for i in range(len(col_pts)):
-                if col_pts[i] is None:
-                    before = [j for j in valid if j < i]
-                    after = [j for j in valid if j > i]
-                    if before and after:
-                        b, a = before[-1], after[0]
-                        col_pts[i] = int(col_pts[b] + (col_pts[a] - col_pts[b]) * (i - b) / (a - b))
-                    elif before:
-                        col_pts[i] = col_pts[before[-1]]
-                    elif after:
-                        col_pts[i] = col_pts[after[0]]
+            if len(valid) < 5: return None
+            _interpolate(col_pts, valid)
         
-        valid = [i for i, v in enumerate(col_pts) if v is not None] or valid
+        valid = [i for i, v in enumerate(col_pts) if v is not None]
         valid.sort()
-        ys = [col_pts[i] for i in valid]
-        xs = valid
         
-        half = 3
-        filtered = list(ys)
-        for i in range(len(ys)):
-            start = max(0, i - half)
-            end = min(len(ys), i + half + 1)
-            window_vals = sorted(ys[start:end])
-            filtered[i] = window_vals[len(window_vals) // 2]
-        ys = filtered
+        # Median + downsample to ~45 points
+        med_data = _median_filter([col_pts[i] for i in valid], 5)
+        xs, ys = list(valid), med_data
+        if len(ys) > 45:
+            idxs = [int(i * (len(ys)-1) / 44) for i in range(45)]
+            ys = [ys[i] for i in idxs]
+            xs = [xs[i] for i in idxs]
         
-        if len(ys) > target_points:
-            indices = [int(i * (len(ys) - 1) / (target_points - 1)) for i in range(target_points)]
-            ys = [ys[i] for i in indices]
-            xs = [xs[i] for i in indices]
-        
-        min_y, max_y = min(ys), max(ys)
-        y_range = max_y - min_y if max_y != min_y else 1
-        min_sx, max_sx = min(xs), max(xs)
-        x_range = max_sx - min_sx if max_sx != min_sx else 1
-        margin = 2
-        def nx(sx): return margin + (sx - min_sx) / x_range * (80 - 2 * margin)
-        def ny(sy): return -4 + (sy - min_y) / y_range * 32
-        
-        path = 'M{:.1f},{:.1f}'.format(nx(xs[0]), ny(ys[0]))
-        for sxi, syi in zip(xs[1:], ys[1:]):
-            _y_clamped = max(-4.0, min(28.0, ny(syi)))
-            path += ' L{:.1f},{:.1f}'.format(nx(sxi), _y_clamped)
-        return path
-        
+        return _pts_to_svg_path(list(zip(xs, ys)))
     except Exception as e:
-        print("  WARN: extract_spark error: " + str(e), file=sys.stderr)
+        print("  WARN: line_spark error: " + str(e), file=sys.stderr)
         return None
+
+
+def _extract_kline_spark_raw(page):
+    """Extract sparkline from a K-line (candlestick) chart canvas.
+    
+    Crops chart body area, resizes to 80x32 (LANCZOS averages out thin elements),
+    finds lowest non-background pixel per column = closing price for down candles.
+    """
+    if Image is None: return None
+    try:
+        el = page.query_selector('.stock-chart-box canvas')
+        if not el: return None
+        raw = el.screenshot()
+        img = Image.open(BytesIO(raw)).convert('RGB')
+        w, h = img.size
+        if w < 100 or h < 50: return None
+        
+        # Crop to chart body (excludes axis labels, volume bars, gaps)
+        chart = img.crop((int(w*0.10), int(h*0.25), int(w*0.87), int(h*0.48)))
+        # Resize to 80x32 LANCZOS - thin elements average to bg, bodies survive
+        tiny = chart.resize((80, 32), Image.LANCZOS)
+        tp = list(tiny.getdata())
+        
+        closes = []
+        for cx in range(80):
+            last = None
+            for cy in range(32):
+                r, g, b = tp[cy * 80 + cx][:3]
+                if r > 210 and g > 210 and b > 210: continue
+                if abs(r-g) < 20 and abs(g-b) < 20 and abs(r-b) < 20: continue
+                last = cy
+            closes.append(last)
+        
+        valid = [(i, c) for i, c in enumerate(closes) if c is not None]
+        if len(valid) < 5: return None
+        xs, ys = zip(*valid)
+        ys = list(_median_filter(ys, 3))
+        return _pts_to_svg_path(list(zip(xs, ys)))
+    except Exception as e:
+        print("  WARN: kline_spark error: " + str(e), file=sys.stderr)
+        return None
+
+
+def _extract_tencent_spark_raw(page):
+    """Extract sparkline from Tencent gu.qq.com page.
+    These pages have 5 canvases. The intraday chart is typically the first
+    stock-chart canvas. Use max-saturation line extraction.
+    """
+    if Image is None: return None
+    try:
+        canvases = page.query_selector_all('canvas')
+        if not canvases:
+            return None
+        
+        # On Tencent pages, the main chart is usually the first large canvas
+        chart_canvas = None
+        for c in canvases:
+            box = c.bounding_box()
+            if box and box['width'] > 300 and box['height'] > 200:
+                chart_canvas = c
+                break
+        if not chart_canvas:
+            chart_canvas = canvases[0]
+        
+        raw = chart_canvas.screenshot()
+        img = Image.open(BytesIO(raw)).convert('RGB')
+        w, h = img.size
+        
+        # Line chart in a smaller canvas: crop less aggressively
+        pixels = list(img.getdata())
+        l = int(w * 0.08)
+        r = int(w * 0.92)
+        t = int(h * 0.08)
+        b = int(h * 0.90)
+        
+        col_pts = []
+        for col in range(l, r):
+            best_y = -1
+            best_score = 0
+            for row in range(t, b):
+                rv, gv, bv = pixels[row * w + col][:3]
+                if rv > 235 and gv > 235 and bv > 235: continue
+                if rv < 20 and gv < 20 and bv < 20: continue
+                sat = max(rv, gv, bv) - min(rv, gv, bv)
+                if sat > 25:
+                    score = sat * ((rv+gv+bv)/3.0 / 255.0)
+                    if score > best_score:
+                        best_score = score
+                        best_y = row
+            col_pts.append(best_y if best_y >= 0 else None)
+        
+        valid = [i for i, v in enumerate(col_pts) if v is not None]
+        if len(valid) < 5: return None
+        _interpolate(col_pts, valid)
+        
+        valid = [i for i, v in enumerate(col_pts) if v is not None]
+        valid.sort()
+        med_data = _median_filter([col_pts[i] for i in valid], 5)
+        xs, ys = list(valid), med_data
+        if len(ys) > 45:
+            idxs = [int(i * (len(ys)-1) / 44) for i in range(45)]
+            ys = [ys[i] for i in idxs]
+            xs = [xs[i] for i in idxs]
+        return _pts_to_svg_path(list(zip(xs, ys)))
+    except Exception as e:
+        print("  WARN: tencent_spark error: " + str(e), file=sys.stderr)
+        return None
+
+
+def _interpolate(arr, valid_indices):
+    """Fill None gaps in array by linear interpolation."""
+    if not valid_indices: return
+    for i in range(len(arr)):
+        if arr[i] is None:
+            before = [j for j in valid_indices if j < i]
+            after = [j for j in valid_indices if j > i]
+            if before and after:
+                b, a = before[-1], after[0]
+                arr[i] = int(arr[b] + (arr[a] - arr[b]) * (i - b) / (a - b))
+            elif before:
+                arr[i] = arr[before[-1]]
+            elif after:
+                arr[i] = arr[after[0]]
+
+
+def _median_filter(data, window=3):
+    """Apply median filter."""
+    result = list(data)
+    half = window // 2
+    for i in range(len(data)):
+        s = max(0, i-half)
+        e = min(len(data), i+half+1)
+        wv = sorted(data[s:e])
+        result[i] = wv[len(wv)//2]
+    return result
+
+
+def _pts_to_svg_path(pts):
+    """Convert [(x,y),...] to SVG path mapping to viewBox='0 -4 80 32'."""
+    xs, ys = zip(*pts)
+    min_y, max_y = min(ys), max(ys)
+    yr = max_y - min_y if max_y != min_y else 1
+    min_x, max_x = min(xs), max(xs)
+    xr = max_x - min_x if max_x != min_x else 1
+    def nx(sx): return 2 + (sx - min_x) / xr * 76
+    def ny(sy): return -2 + ((sy - min_y) / yr) * 24
+    
+    path = 'M%.1f,%.1f' % (nx(xs[0]), ny(ys[0]))
+    for xi, yi in zip(xs[1:], ys[1:]):
+        yv = ny(yi)
+        if yv < -3.5: yv = -3.5
+        if yv > 27.5: yv = 27.5
+        path += ' L%.1f,%.1f' % (nx(xi), yv)
+    return path
+
+
+def extract_page_price(text, key):
+    """Extract price, change, chg_pct from page innerText."""
+    result = {}
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    price = change = chg_pct = status = None
+    for i, line in enumerate(lines):
+        n = parse_num(line)
+        if n and n > 0 and price is None:
+            price = n
+            continue
+        if price is not None:
+            m = re.search(r'^([+-]\d+\.?\d*)([+-]\d+\.?\d*%)', line)
+            if m and change is None:
+                change = float(m.group(1))
+                chg_pct = float(m.group(2).rstrip('%'))
+                continue
+            m = re.search(r'^([+-]\d+\.?\d*)([+-]?\d+\.?\d*%)$', line.replace(' ', ''))
+            if m and change is None:
+                change = float(m.group(1))
+                chg_pct = float(m.group(2).rstrip('%'))
+                continue
+            m = re.match(r'^[+-]\d+\.?\d*%$', line)
+            if m and chg_pct is None:
+                chg_pct = float(m.group().rstrip('%'))
+                continue
+        if re.search(r'交易|收盘|休市|竞价', line):
+            status = line
+    if price and change is not None:
+        result.update({'price': price, 'change': change, 'chg_pct': chg_pct or 0})
+        if status: result['status'] = status
+        if chg_pct and abs(chg_pct) > 0.001:
+            result['prev_close'] = round(price / (1 + chg_pct/100), 2)
+        elif change:
+            result['prev_close'] = round(price - change, 2)
+        result['source'] = 'browser'
+    return result
+
+
+EXTRACTORS = {
+    'line': _extract_line_spark_raw,
+    'kline': _extract_kline_spark_raw,
+    'tencent': _extract_tencent_spark_raw,
+}
 
 
 def run():
     from playwright.sync_api import sync_playwright
     print("\n" + "=" * 50, file=sys.stderr)
-    print("  futunn Browser Monitor", file=sys.stderr)
+    print("  Browser Monitor - All Indices", file=sys.stderr)
     print("  " + datetime.now().strftime('%Y-%m-%d %H:%M:%S'), file=sys.stderr)
     print("=" * 50, file=sys.stderr)
+    
     indices = {}
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp('http://localhost:9222')
         context = browser.contexts[0]
-        page = context.new_page()
-        for key, info in INDEX_CARDS.items():
+        
+        for name, url, chart_type in INDEX_PAGES:
+            page = context.new_page()
             try:
-                print("  [" + key + "]: " + info['url'], file=sys.stderr)
-                page.goto(info['url'], wait_until='domcontentloaded', timeout=15000)
-                time.sleep(3.5)
+                print("  [%s]: %s" % (name, url), file=sys.stderr)
+                page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                time.sleep(3)
+                
                 text = page.evaluate('() => document.body.innerText')
                 if not text or len(text) < 50:
-                    print("  WARN: " + key + " page too short", file=sys.stderr)
+                    print("  WARN: %s page too short (%dch)" % (name, len(text or '')), file=sys.stderr)
+                    page.close()
                     continue
-                data = extract(text, key)
+                
+                data = extract_page_price(text, name)
                 if data:
-                    data['market'] = info['market']
-                    data['symbol'] = info['symbol']
-                    try:
-                        if key == 'VIX':
-                            # VIX uses K-line chart with specialized canvas extraction
-                            spark_path, n_kline = _extract_kline_closes(page)
-                        else:
-                            spark_path = extract_spark_from_canvas(page)
-                        if spark_path:
-                            data['spark_path'] = spark_path
-                    except Exception:
-                        pass
-                    indices[key] = data
-                    tag = 'T' if '\u4ea4\u6613' in (data.get('status','')) else 'C'
-                    sp_pts = len(data.get('spark_path','').split(' ')) if data.get('spark_path') else 0
-                    print("  OK " + key + ": " + str(data['price']) + " " + str(data.get('change',0)) + " [" + tag + "] spark=" + str(sp_pts), file=sys.stderr)
+                    # Extract sparkline using chart-type-specific extractor
+                    extractor = EXTRACTORS.get(chart_type)
+                    if extractor:
+                        try:
+                            spark_path = extractor(page)
+                            if spark_path:
+                                data['spark_path'] = spark_path
+                        except Exception as e:
+                            print("  WARN: %s sparkline error: %s" % (name, e), file=sys.stderr)
+                    
+                    indices[name] = data
+                    sp_pts = len(data.get('spark_path', '').split(' ')) if data.get('spark_path') else 0
+                    print("  OK %s: %s %s [%s] spark=%d" % (
+                        name, data.get('price','?'), data.get('change','?'),
+                        'T' if '交易' in data.get('status','') else 'C', sp_pts), file=sys.stderr)
                 else:
-                    print("  WARN: " + key + " extract failed", file=sys.stderr)
+                    print("  WARN: %s extract failed" % name, file=sys.stderr)
             except Exception as e:
-                print("  FAIL: " + key + " " + str(e), file=sys.stderr)
-        page.close()
+                print("  FAIL: %s %s" % (name, str(e)[:60]), file=sys.stderr)
+            page.close()
+    
     if indices:
-        snapshot = {'date': datetime.now().strftime('%Y-%m-%d'), 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'indices': indices}
+        snapshot = {
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'indices': indices,
+        }
         path = os.path.join(ARCHIVE_DIR, 'browser_snapshot.json')
         with open(path, 'w') as f:
             json.dump(snapshot, f, indent=2, ensure_ascii=False)
-        print("\n  Saved: " + path + " (" + str(len(indices)) + " indices)", file=sys.stderr)
+        print("\n  Saved: %s (%d indices)" % (path, len(indices)), file=sys.stderr)
         for k, v in indices.items():
             sp = v.get('spark_path', '')
             sp_pts = len(sp.split(' ')) if sp else 0
-            print("    " + k + ": " + str(v.get('price','?')) + "  " + str(v.get('change','?')) + "  " + v.get('status','')[:10] + "  spark=" + str(sp_pts) + "pts", file=sys.stderr)
+            print("    %s: %s %s spark=%dpts" % (
+                k, v.get('price','?'), v.get('change','?'), sp_pts), file=sys.stderr)
+    else:
+        print("  FAIL: no indices collected", file=sys.stderr)
 
 
 if __name__ == '__main__':
