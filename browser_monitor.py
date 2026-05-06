@@ -69,22 +69,176 @@ def extract(text, key):
     # VIX: use the raw futures price (top value on page), NOT .VIX spot override
     # User explicitly requested: "不要用 .VIX的值用最上面的第一个值"
     # Update source label to indicate it's the futures contract
-    # VIX: compute OHLC data for sparkline generation
-    if 'VIX' in key and result.get('price'):
-        result['source'] = 'futunn_browser'
-        # Generate realistic OHLC from page data
-        pc = result.get('prev_close', result['price'])
-        chg_pct = result.get('chg_pct', 0)
-        # Widen range for a more realistic sparkline spread
-        # Typical VIX futures daily range is ~2-3% of price
-        _range = abs(pc - result['price']) * 1.5
-        if _range < 0.05:
-            _range = pc * 0.015  # 1.5% of price as min range
-        _mid = (pc + result['price']) / 2
-        result['open'] = round(pc, 2)
-        result['high'] = round(_mid + _range, 2)
-        result['low'] = round(_mid - _range, 2)
     return result if result.get('price') else None
+
+
+def _extract_kline_closes(page):
+    """
+    Extract closing prices from a K-line (candlestick) chart canvas.
+    
+    For K-line charts (used by VXMAIN futures page), the chart shows
+    candlesticks with bodies and wicks. For down candles, the closing
+    price is at the BOTTOM of the candle body.
+    
+    Strategy:
+    1. Crop to chart area (exclude Y-axis labels, volume bars)
+    2. For each column, find the LOWEST green-ish pixel = close of down candle
+    3. Map to SVG viewBox with correct orientation (higher price = higher on chart)
+    
+    Returns: (path_string, num_points) or (None, 0) on failure
+    """
+    if Image is None:
+        return None, 0
+    try:
+        el = page.query_selector('.stock-chart-box canvas')
+        if not el:
+            return None, 0
+        raw_bytes = el.screenshot()
+        img = Image.open(BytesIO(raw_bytes))
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        w, h = img.size
+        if w < 100 or h < 50:
+            return None, 0
+        
+        pixels = list(img.getdata())
+        
+        # Chart area crops - VXMAIN futures has Y-axis labels extending
+        # into the chart area. Dynamic detection: find where green
+        # pixel column variation exceeds 10px (chart starts).
+        _tmp_l = int(w * 0.02)
+        _tmp_r = int(w * 0.98)
+        _tmp_t = int(h * 0.12)
+        _tmp_b = int(h * 0.55)
+        
+        # Find chart start column by detecting close value variation
+        _chart_start = _tmp_r
+        for _col in range(_tmp_l, _tmp_r):
+            _lowest = None
+            for _row in range(_tmp_t, _tmp_b):
+                _r, _g, _b = pixels[_row * w + _col][:3]
+                if _r > 230 and _g > 230 and _b > 230: continue
+                if _r < 25 and _g < 25 and _b < 25: continue
+                _gs = _g - max(_r, _b)
+                if _gs > 15:
+                    _lowest = _row
+            if _lowest is not None:
+                _prev_lowest = None
+                for _pcol in range(max(_tmp_l, _col - 15), _col):
+                    for _prow in range(_tmp_t, _tmp_b):
+                        _pr, _pg, _pb = pixels[_prow * w + _pcol][:3]
+                        if _pr > 230 and _pg > 230 and _pb > 230: continue
+                        if _pr < 25 and _pg < 25 and _pb < 25: continue
+                        _gs2 = _pg - max(_pr, _pb)
+                        if _gs2 > 15:
+                            _prev_lowest = _prow
+                            break
+                    if _prev_lowest is not None:
+                        break
+                if _prev_lowest is not None and abs(_lowest - _prev_lowest) > 8:
+                    _chart_start = _col
+                    break
+        
+        # Safeguard: ensure chart area is at least 30% of canvas width
+        _min_l = int(w * 0.25)
+        l_crop = max(_chart_start, _min_l)
+        
+        # Right crop: chart ends when green pixels drop near zero
+        _chart_end = _tmp_l
+        _count_10 = 0
+        for _col in range(_tmp_r - 1, _tmp_l, -1):
+            _has_green = False
+            for _row in range(_tmp_t, _tmp_b):
+                _r, _g, _b = pixels[_row * w + _col][:3]
+                if _r > 230 and _g > 230 and _b > 230: continue
+                if _r < 25 and _g < 25 and _b < 25: continue
+                if _g - max(_r, _b) > 15:
+                    _has_green = True
+                    _count_10 = 15
+                    _chart_end = _col
+                    break
+            if not _has_green:
+                _count_10 -= 1
+                if _count_10 <= 0 and _chart_end == _tmp_l:
+                    _chart_end = _col
+                    break
+        
+        _min_r = int(w * 0.75)
+        r_crop = max(_chart_end, _min_r)
+        t_crop = _tmp_t
+        b_crop = _tmp_b
+        
+        # Scan each column for the lowest green-ish pixel
+        # This represents the close of a down candle in a K-line chart
+        closes = []
+        for col in range(l_crop, r_crop):
+            lowest_green = None
+            for row in range(t_crop, b_crop):
+                r, g, b = pixels[row * w + col][:3]
+                # Skip background (bright gray) and grid (dark)
+                if r > 235 and g > 235 and b > 235:
+                    continue
+                if r < 30 and g < 30 and b < 30:
+                    continue
+                # For VIX (down), look for green-ish pixels (g > max(r,b))
+                green_score = g - max(r, b)
+                if green_score > 15:
+                    lowest_green = row  # track the last one (bottom)
+            closes.append(lowest_green)
+        
+        # Remove None columns
+        valid = [(i, c) for i, c in enumerate(closes) if c is not None]
+        if len(valid) < 5:
+            return None, 0
+        
+        # Bucket into target_points (~40)
+        target_pts = 40
+        xs_raw, ys_raw = zip(*valid)
+        n_valid = len(valid)
+        bucket_size = max(1, n_valid // target_pts)
+        
+        sampled = []
+        for bi in range(target_pts):
+            start = bi * bucket_size
+            end = min((bi + 1) * bucket_size, n_valid)
+            bucket = valid[start:end]
+            if not bucket:
+                continue
+            bucket_ys = [b[1] for b in bucket]
+            bucket_ys.sort()
+            median_y = bucket_ys[len(bucket_ys)//2]
+            median_x = bucket[len(bucket)//2][0]
+            sampled.append((median_x, median_y))
+        
+        # Map to SVG viewBox: 0 -4 80 32 (y: -4=top, 28=bottom)
+        # Image y (increasing downward) must map to SVG y correctly
+        # Higher price = lower image y = lower SVG y = top of chart
+        # Lower price = higher image y = higher SVG y = bottom of chart
+        min_img_y = min(p[1] for p in sampled)
+        max_img_y = max(p[1] for p in sampled)
+        img_range = max_img_y - min_img_y if max_img_y != min_img_y else 1
+        min_x = min(p[0] for p in sampled)
+        max_x = max(p[0] for p in sampled)
+        x_range = max_x - min_x if max_x != min_x else 1
+        
+        def nx(sx): return 2 + (sx - min_x) / x_range * 76
+        # SVG y = lower y for higher price (invert image y mapping)
+        # Higher price (small img y) → small SVG y (top)
+        def ny(sy): return -2 + ((sy - min_img_y) / img_range) * 24
+        
+        path = 'M%.1f,%.1f' % (nx(sampled[0][0]), ny(sampled[0][1]))
+        for col, row in sampled[1:]:
+            yv = ny(row)
+            if yv < -3.5: yv = -3.5
+            if yv > 27.5: yv = 27.5
+            path += ' L%.1f,%.1f' % (nx(col), yv)
+        
+        return path, len(sampled)
+        
+    except Exception as e:
+        print("  WARN: _extract_kline_closes error: " + str(e), file=sys.stderr)
+        return None, 0
 
 
 def extract_spark_from_canvas(page, target_points=73):
@@ -114,13 +268,10 @@ def extract_spark_from_canvas(page, target_points=73):
             col_pixels[i % w].append(rgb)
         
         # CROP EDGE COLUMNS (Y-axis labels/shadows at left 10% and right 10%)
-        # Actual chart area starts after the left axis and ends before the right axis
         _crop_left = int(w * 0.10)
         _crop_right = int(w * 0.90)
         
         # For each column, find the chart line position via max saturation
-        # This picks the single most saturated non-white pixel = center of the chart line
-        # More stable than weighted centroid which picks up noise from anti-aliased edges
         col_pts = []
         for col in range(w):
             if col < _crop_left or col > _crop_right:
@@ -164,10 +315,7 @@ def extract_spark_from_canvas(page, target_points=73):
                 elif after:
                     col_pts[i] = col_pts[after[0]]
         
-        # CROP: remove axis/edge artifacts by filtering outlier Y positions
-        # Y-axis labels/shadows are typically at the extreme edges of the canvas
-        # The real chart line occupies the middle ~70% of the Y range
-        # Use IQR-based outlier removal
+        # IQR-based outlier removal
         _y_vals = [v for v in col_pts if v is not None]
         if _y_vals:
             _y_sorted = sorted(_y_vals)
@@ -177,14 +325,12 @@ def extract_spark_from_canvas(page, target_points=73):
             _iqr = _q3 - _q1 if _q3 > _q1 else max(_y_sorted) - min(_y_sorted) * 0.3
             _lower = _q1 - 1.5 * _iqr
             _upper = _q3 + 1.5 * _iqr
-            # Also clip to within image height (hard boundary)
             _lower = max(_lower, 0)
             _upper = min(_upper, h - 1)
-            # Mark outlier columns as None for interpolation
             for i in range(len(col_pts)):
                 if col_pts[i] is not None and (col_pts[i] < _lower or col_pts[i] > _upper):
                     col_pts[i] = None
-            # Re-interpolate after cropping outliers
+            # Re-interpolate
             valid = [i for i, v in enumerate(col_pts) if v is not None]
             if len(valid) < 5:
                 return None
@@ -205,8 +351,7 @@ def extract_spark_from_canvas(page, target_points=73):
         ys = [col_pts[i] for i in valid]
         xs = valid
         
-        # Median filter window=7 — proven effective at removing single-pixel noise
-        # while preserving sawtooth character
+        # Median filter window=7
         half = 3
         filtered = list(ys)
         for i in range(len(ys)):
@@ -222,7 +367,7 @@ def extract_spark_from_canvas(page, target_points=73):
             ys = [ys[i] for i in indices]
             xs = [xs[i] for i in indices]
         
-        # Map to viewBox="0 -4 80 32": x:0-80, y:-4(top) to 28(bottom)
+        # Map to viewBox="0 -4 80 32"
         min_y, max_y = min(ys), max(ys)
         y_range = max_y - min_y if max_y != min_y else 1
         min_sx, max_sx = min(xs), max(xs)
@@ -231,7 +376,6 @@ def extract_spark_from_canvas(page, target_points=73):
         def nx(sx): return margin + (sx - min_sx) / x_range * (80 - 2 * margin)
         def ny(sy): return -4 + (sy - min_y) / y_range * 32
         
-        # Hard clamp: ensure all points stay within viewBox (avoid axis/shadow artifacts)
         path = 'M{:.1f},{:.1f}'.format(nx(xs[0]), ny(ys[0]))
         for sxi, syi in zip(xs[1:], ys[1:]):
             _y_clamped = max(-4.0, min(28.0, ny(syi)))
@@ -268,11 +412,11 @@ def run():
                     data['market'] = info['market']
                     data['symbol'] = info['symbol']
                     try:
-                        # VIX uses a K-line chart (not line chart), so canvas
-                        # pixel analysis doesn't work correctly. Generate
-                        # sparkline from OHLC/extracted data instead.
+                        # VIX uses a K-line (candlestick) chart, not a line chart.
+                        # Specialized K-line extraction finds candle body bottoms
+                        # as close prices, removing Y-axis shadow artifacts.
                         if key == 'VIX':
-                            spark_path = None
+                            spark_path, _ = _extract_kline_closes(page)
                         else:
                             spark_path = extract_spark_from_canvas(page)
                         if spark_path:
