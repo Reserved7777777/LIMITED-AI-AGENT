@@ -250,100 +250,80 @@ def sync_risks_from_cls(html):
 # ============================================================
 # ANALYSIS SYNC - generate from current prices
 # ============================================================
-def sync_analysis(html):
-    """Read current prices from cfx cards and regenerate analysis text."""
-    def extract_cfx_price(html, marker):
-        pos = html.find(marker)
-        if pos < 0: return None, None, None
-        card_end = html.find('</a>', pos)
-        if card_end >= 0: card_end += 4
-        section = html[pos:card_end] if card_end > pos else html[pos:pos+500]
-        p = re.search(r'class="p[^"]*"[^>]*>([\d.,]+)', section)
-        c = re.search(r'class="c[^"]*"[^>]*>([+\-]?[\d.]+)', section)
-        cp = re.search(r'([+\-]?[\d.]+%)', section)
-        try:
-            price = float(p.group(1).replace(',', '')) if p else None
-        except ValueError:
-            price = None
-        try:
-            chg = float(c.group(1)) if c else None
-        except ValueError:
-            chg = None
-        try:
-            chgp = float(cp.group(1).replace('%', '')) if cp else None
-        except ValueError:
-            chgp = None
-        return price, chg, chgp
+def sync_analysis(html, date_str=None):
+    """Update analysis section prices in-place. Preserves template structure."""
+    import re
 
-    g, _, gcp = extract_cfx_price(html, 'XAU')
-    wti, _, wcp = extract_cfx_price(html, 'WTI')
-    brent, _, bcp = extract_cfx_price(html, '布伦特')
-    vix_p, _, vix_cp = extract_cfx_price(html, 'VIX')
+    # --- Extract latest prices from cfx-grid in HTML ---
+    def _extract_price(html, label):
+        pos = html.find(f'>{label}</div>')
+        if pos < 0:
+            return None
+        after = html[pos:pos+200]
+        m = re.search(r'<div class="p (?:up|down)">([^<]+)</div>', after)
+        return m.group(1).replace(',', '') if m else None
 
-    # Extract CNH from cfx card
-    cnh = None
-    cnh_pos = html.find('USD/CNY')
-    if cnh_pos < 0: cnh_pos = html.find('USDCNH')
-    if cnh_pos >= 0:
-        cnh_section = html[cnh_pos:cnh_pos+100]
-        cnh_m = re.search(r'class="p[^"]*"[^>]*>([\d.]+)', cnh_section)
-        if cnh_m: cnh = cnh_m.group(1)
+    gold_p = _extract_price(html, 'XAU/USD')
+    wti_p = _extract_price(html, 'WTI 原油')
+    brent_p = _extract_price(html, '布伦特')
+    cnh_p = _extract_price(html, 'USD/CNY')
 
-    g_str = f"${g:,.2f}" if g else "N/A"
-    w_str = f"${wti:.2f}" if wti else "N/A"
-    b_str = f"${brent:.2f}" if brent else "N/A"
-    v_str = f"{vix_p:.2f}" if vix_p else "N/A"
-    cnh_str = cnh if cnh else "N/A"
+    if not gold_p and not wti_p and not brent_p and not cnh_p:
+        print("  no prices found in cfx-grid, skipping analysis sync")
+        return html
 
-    g_chg_str = f"(+{gcp:.2f}%)" if gcp and gcp >= 0 else f"({gcp:.2f}%)" if gcp else ""
-    w_chg_str = f"(+{wcp:.2f}%)" if wcp and wcp >= 0 else f"({wcp:.2f}%)" if wcp else ""
-    b_chg_str = f"(+{bcp:.2f}%)" if bcp and bcp >= 0 else f"({bcp:.2f}%)" if bcp else ""
+    # Read cached analysis text for 8-section structure
+    _analysis_text = ""
+    if date_str:
+        _cache_path = f"/tmp/report-data-{date_str}.json"
+        if os.path.exists(_cache_path):
+            try:
+                with open(_cache_path) as _cf:
+                    import json
+                    _cd = json.load(_cf)
+                _analysis_text = _cd.get("analysis", "")
+            except Exception:
+                pass
 
-    lines = []
-    # Add 金油比 (gold/oil ratio)
-    gold_wti_ratio = f"{g/wti:.1f}" if g and wti and wti > 0 else "N/A"
-    lines.append(f'      <strong><a href="https://www.futunn.com/currency/XAUUSD-FX" target="_blank" style="color:var(--text);text-decoration:none;">\u9ec4\u91d1</a></strong>:{g_str}{g_chg_str}。\u91d1\u4ef7\u7ef4\u6301\u5386\u53f2\u9ad8\u4f4d\u533a\u95f4,\u5730\u7f18\u6ea2\u4ef7+\u592e\u884c\u8d2d\u91d1\u53cc\u652f\u6491,\u5173\u6ce8\u5468\u4e09 Fed \u51b3\u8bae\u6307\u5f15。<br>')
-    lines.append(f'      <strong>\u91d1\u6cb9\u6bd4</strong>:{gold_wti_ratio}:1\uff08\u9ec4\u91d1/WTI\uff09。\u5386\u53f2\u4e2d\u4f4d\u7ea7\u522b,\u5730\u7f18\u98ce\u9669\u5b9a\u4ef7\u5145\u5206,\u6ce8\u610f\u6cb9\u4ef7\u5f31\u52bf\u5bfc\u81f4\u6bd4\u7387\u504f\u9ad8\u3002<br>')
-    lines.append(f'      <strong>\u539f\u6cb9</strong>:{w_str}{w_chg_str},{b_str}{b_chg_str}。\u6cb9\u4ef7 100+ \u9ad8\u4f4d\u8fd0\u884c,\u970d\u5c14\u6728\u5179\u5730\u7f18\u6ea2\u4ef7\u6301\u7eed,\u5173\u6ce8\u5c40\u52bf\u5347\u7ea7\u5bf9\u4f9b\u5e94\u94fe\u7684\u5f71\u54cd。<br>')
-    lines.append(f'      <strong>\u7f8e\u5143/\u4eba\u6c11\u5e01</strong>:{cnh_str}。\u4eba\u6c11\u5e01\u6c47\u7387\u77ed\u671f\u7a33\u5b9a,\u8de8\u5883\u8d44\u91d1\u65e0\u5f02\u5e38。\u5173\u6ce8 Fed \u51b3\u8bae\u5bf9\u7f8e\u5143\u65b9\u5411\u7684\u5f71\u54cd。<br>')
-    lines.append(f'      <strong>VIX</strong>:{v_str}。\u5904\u4e8e\u4e2d\u4f4d\u533a\u95f4,\u5e02\u573a\u5bf9\u672c\u5468 Fed \u51b3\u8bae+\u975e\u519c\u6570\u636e\u4fdd\u6301\u8b66\u60d5。<br>')
-    new_html = '<!-- ANALYSIS -->\n  <div class="analysis">\n    <div class="a-label">\U0001f4ca \u5546\u54c1\u4e0e\u6c47\u7387\u5206\u6790</div>\n    <div class="a-body">\n' + '\n'.join(lines) + '\n    </div>\n  </div>'
+    if _analysis_text:
+        txt = _analysis_text
+        # Update prices in cached text
+        if gold_p:
+            # Match gold price by context to avoid matching copper
+            _gold_ctx = '\u9ec4\u91d1\uff08XAU/USD\uff09</strong>\uff1a\u62a5 $'
+            _gp = txt.find(_gold_ctx)
+            if _gp >= 0:
+                _after = txt[_gp+len(_gold_ctx):]
+                _old_price = re.search(r'[0-9,]+\.?[0-9]*', _after)
+                if _old_price:
+                    txt = txt[:_gp+len(_gold_ctx)] + f"{float(gold_p.replace(',', '')):,.2f}" + txt[_gp+len(_gold_ctx)+_old_price.end():]
+        if wti_p:
+            txt = re.sub(r'(WTI \$)[0-9,]+\.?[0-9]*', lambda m: m.group(1) + wti_p, txt)
+        if brent_p:
+            txt = re.sub(r'(布伦特 \$)[0-9,]+\.?[0-9]*', lambda m: m.group(1) + brent_p, txt)
+        if cnh_p:
+            txt = re.sub(r'(USD/CNH 报 )[0-9]+\.?[0-9]*', lambda m: m.group(1) + cnh_p, txt)
+        _analysis_text = txt
+    else:
+        print("  no cached analysis text available")
+        return html
 
-    # Find the analysis section between COMMODITY & FX and risk-list
-    # The cfx-grid ends, then the analysis text starts, then risk-list
-    start = html.find('  <div class="cfx-grid">')
-    if start >= 0:
-        # Find the end of cfx-grid
-        cfx_end = html.find('  </div>', start)
-        if cfx_end >= 0:
-            cfx_end = html.find('\n', cfx_end + 8)  # line after </div>
-            # After cfx grid, there's the analysis text, then risk-list
-            risk_start = html.find('<!-- ===== RISK ===== -->', cfx_end)
-            if risk_start < 0:
-                risk_start = html.find('<div class="risk-list">', cfx_end)
-            if risk_start >= 0 and risk_start > cfx_end:
-                html = html[:cfx_end] + '\n' + new_html + '\n' + html[risk_start:]
-                print("  Analysis synced")
-                return html
+    # Use marker boundaries: <!-- ANALYSIS --> to <!-- ===== RISK ===== -->
+    an_comment = '<!-- ANALYSIS -->'
+    risk_comment = '<!-- ===== RISK ===== -->'
+    an_start = html.find(an_comment)
+    risk_start = html.find(risk_comment, an_start)
 
-    # Fallback: find analysis lines by their position
-    start = html.find('<!-- ===== COMMODITY & FX ===== -->')
-    if start >= 0:
-        # Find the first analysis line (look for '黄金')
-        an_start = html.find('<strong><a', start)
-        if an_start < 0:
-            an_start = html.find('<strong>\u9ec4\u91d1', start)
-        an_end = html.find('<!-- ===== RISK ===== -->', an_start) if an_start >= 0 else -1
-        if an_end < 0:
-            an_end = html.find('<div class="risk-list">', an_start) if an_start >= 0 else -1
-        if an_start >= 0 and an_end > an_start:
-            html = html[:an_start] + new_html + html[an_end:]
-            print("  Analysis synced")
-            return html
+    if an_start >= 0 and risk_start > an_start:
+        new_html = (an_comment + '\n  <div class="analysis">\n    <div class="a-label">'
+                   '\U0001f4ca \u5546\u54c1\u4e0e\u6c47\u7387\u5206\u6790</div>\n    <div class="a-body">\n'
+                   + _analysis_text + '\n    </div>\n  </div>')
+        html = html[:an_start] + new_html + html[risk_start:]
+        print("  Analysis synced")
+        return html
 
     print("  analysis section not found")
     return html
-
 def sync_events(html):
     """Regenerate economic calendar. Currently hardcoded 8 items with stars."""
     stars_map = {1: '\u2605\u2606\u2606\u2606\u2606',
@@ -640,7 +620,7 @@ def main():
     # 7. (SKIPPED) Stance & insight — MARCUS 当日综合分析确定，不动
     
     # 8. Analysis section — sync with current commodity prices
-    html = sync_analysis(html)
+    html = sync_analysis(html, date_str=date)
     
 # ============================================================
     # Write updated HTML
