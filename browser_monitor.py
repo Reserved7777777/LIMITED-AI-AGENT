@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-browser_monitor.py — Monitor futunn index pages via Playwright + existing Chrome CDP.
+browser_monitor.py — Monitor VIX (VXMAIN futures) via Playwright (only index needing browser).
 Extracts real-time data + actual chart sparkline from canvas.
 """
 import json, os, sys, re, time
@@ -15,14 +15,7 @@ ARCHIVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idx_data
 os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
 INDEX_CARDS = {
-    'SPX': {'url': 'https://www.futunn.com/index/.SPX-US', 'market': 'us', 'symbol': '.SPX'},
-    'NDX': {'url': 'https://www.futunn.com/index/.IXIC-US', 'market': 'us', 'symbol': '.IXIC'},
-    'DJI': {'url': 'https://www.futunn.com/index/.DJI-US', 'market': 'us', 'symbol': '.DJI'},
     'VIX': {'url': 'https://www.futunn.com/futures/VXMAIN-US', 'market': 'us', 'symbol': 'VXMAIN'},
-    'SH':  {'url': 'https://www.futunn.com/index/000001-SH', 'market': 'ashare', 'symbol': '000001'},
-    'SZ':  {'url': 'https://www.futunn.com/index/399001-SZ', 'market': 'ashare', 'symbol': '399001'},
-    'CY':  {'url': 'https://www.futunn.com/index/399006-SZ', 'market': 'ashare', 'symbol': '399006'},
-    'HK':  {'url': 'https://www.futunn.com/index/800700-HK', 'market': 'hk', 'symbol': '800700'},
 }
 
 def parse_num(s):
@@ -73,21 +66,11 @@ def extract(text, key):
         if high: result['high'] = high
         if low: result['low'] = low
         result['source'] = 'futunn_browser'
-    # VIX spot override
-    if 'VIX' in key:
-        v = re.search(r'\.VIX\s*([\d.]+)\s*([+-][\d.]+)\s*([+-][\d.]+)%', text)
-        if v and result.get('price'):
-            spot_price = float(v.group(1))
-            spot_change = float(v.group(2))
-            spot_pct = float(v.group(3).replace('%',''))
-            result['price'] = spot_price
-            result['change'] = spot_change
-            result['chg_pct'] = spot_pct
-            result['source'] = 'futunn_browser_vix'
-            if spot_pct != 0:
-                result['prev_close'] = round(spot_price / (1 + spot_pct/100), 2)
-            else:
-                result['prev_close'] = round(spot_price - spot_change, 2)
+    # VIX: use the raw futures price (top value on page), NOT .VIX spot override
+    # User explicitly requested: "不要用 .VIX的值用最上面的第一个值"
+    # Update source label to indicate it's the futures contract
+    if 'VIX' in key and result.get('price'):
+        result['source'] = 'futunn_browser'
     return result if result.get('price') else None
 
 

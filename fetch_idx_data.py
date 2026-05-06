@@ -225,6 +225,110 @@ def fetch_vix_finnhub():
     return {}
 
 # --- Browser fallback for futunn index pages ---
+
+# --- US indices from futunn __INITIAL_STATE__ (no browser) ---
+def _extract_init_state(html):
+    """Extract __INITIAL_STATE__ JSON from futunn HTML using brace counting."""
+    pos = html.find('__INITIAL_STATE__=')
+    if pos < 0:
+        pos = html.find('__INITIAL_STATE__ =')
+    if pos < 0:
+        return None
+    eq_pos = html.find('=', pos) + 1
+    while eq_pos < len(html) and html[eq_pos] in ' =\n\r\t':
+        eq_pos += 1
+    if html[eq_pos] != '{':
+        return None
+    depth = 0; in_str = False; escape = False; end = eq_pos
+    for i in range(eq_pos, min(eq_pos + 200000, len(html))):
+        c = html[i]
+        if in_str:
+            if escape: escape = False
+            elif c == '\\': escape = True
+            elif c == '"': in_str = False
+        else:
+            if c == '"': in_str = True
+            elif c == '{': depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0: end = i + 1; break
+    if end <= eq_pos:
+        return None
+    try:
+        return json.loads(html[eq_pos:end])
+    except json.JSONDecodeError:
+        return None
+
+def fetch_us_indices_futunn_init():
+    """Extract intraday minute data from futunn __INITIAL_STATE__ for SPX/NDX/DJI.
+    No browser needed - data is server-rendered in the page HTML.
+    Returns dict with keys SPX, NDX, DJI each containing price, change, chg_pct, minute_prices.
+    """
+    futunn_urls = {
+        'SPX': ('https://www.futunn.com/index/.SPX-US', '200003'),
+        'NDX': ('https://www.futunn.com/index/.IXIC-US', '200002'),
+        'DJI': ('https://www.futunn.com/index/.DJI-US', '200001'),
+    }
+    result = {}
+    for key, (url, stock_id) in futunn_urls.items():
+        raw = _fetch(url)
+        if not raw:
+            continue
+        try:
+            state = _extract_init_state(raw)
+            if not state:
+                continue
+            
+            # Extract minuteChartsData
+            mcd = state.get('stock_charts_data', {}).get('minuteChartsData', {})
+            if mcd.get('stockId') != stock_id:
+                continue
+            points = mcd.get('list', [])
+            if not points or len(points) < 3:
+                continue
+            
+            prices = [float(p['cc_price']) for p in points if p.get('cc_price')]
+            if not prices:
+                continue
+            
+            # Price data from stock_info
+            si = state.get('stock_info', {})
+            try:
+                price = float(str(si.get('price', '0')).replace(',', '').replace('+', '').replace('--', '0'))
+            except:
+                price = prices[-1]
+            
+            try:
+                change = float(str(si.get('change', '0')).replace(',', '').replace('+', '').replace('--', '0'))
+            except:
+                change = round(prices[-1] - prices[0], 2)
+            
+            try:
+                chg_pct = float(str(si.get('changeRatio', '0%')).replace('%', '').replace('+', '').replace('--', '0'))
+            except:
+                chg_pct = round((prices[-1] - prices[0]) / prices[0] * 100, 2)
+            
+            try:
+                prev_close = float(str(si.get('priceLastClose', '0')).replace(',', '').replace('--', '0'))
+            except:
+                prev_close = None
+            
+            entry = {
+                'price': price,
+                'change': change,
+                'chg_pct': chg_pct,
+                'minute_prices': prices,
+                'source': 'futunn_init',
+            }
+            if prev_close and prev_close > 0:
+                entry['prev_close'] = prev_close
+            
+            result[key] = entry
+        except Exception as e:
+            print(f"  \u26a0\ufe0f  futunn_init {key}: {e}", file=sys.stderr)
+            continue
+    return result
+
 def fetch_via_browser_futunn(futunn_url, index_key):
     """
     Browser fallback: open a futunn index page, extract price data via snapshot.
@@ -384,63 +488,71 @@ def get_sparkline_color(change, chg_pct, is_vix=False):
 def fetch_all_indices():
     """Fetch all 8 index data.
     Strategy:
-    - Closed markets (US): browser snapshot preferred (definitive close data)
-    - Trading markets (A-share, HK): API pipeline (real-time + real minute data for sparklines)
-    - Cross-validate: API sparklines always win over synthetic"""
+    - US indices (SPX/NDX/DJI): futunn __INITIAL_STATE__ (embedded minute data, no browser)
+    - A-share (SH/SZ/CY): Tencent minichart API (242 point minute data)
+    - HK (HSTECH): Tencent API
+    - VIX: browser snapshot (VXMAIN futures - only available via Playwright)
+    - Fallbacks: Sina (US prices), Finnhub (VIX spot)
+    """
     results = {}
-    browser_data = monitor_futunn_pages()
     
-    # A. Closed US markets: use browser snapshot as baseline
-    if browser_data:
-        for key in ['SPX', 'NDX', 'DJI', 'VIX']:
-            if key in browser_data:
-                val = browser_data[key]
-                status = val.get('status', '')
-                if '收盘' in status or val.get('market') == 'us':
-                    results[key] = val
-                    results[key]['source'] = 'futunn_browser'
+    # A. US indices from futunn __INITIAL_STATE__ (intraday minute data, no browser)
+    us_init = fetch_us_indices_futunn_init()
+    if us_init:
+        results.update(us_init)
+        print(f"  US indices (futunn_init): {', '.join(us_init.keys())} OK", file=sys.stderr)
+    else:
+        # Fallback: Sina US API
+        us_sina = fetch_us_indices_sina()
+        if us_sina:
+            results.update(us_sina)
+            print(f"  US indices (Sina fallback): {', '.join(us_sina.keys())} OK", file=sys.stderr)
     
-    # B. Trading A-share markets: API pipeline (real-time + minute_prices for sparklines)
-    tencent_ashare = fetch_ashare_indices_tencent()
-    if tencent_ashare:
-        results.update(tencent_ashare)
-        print(f"  A-share (Tencent): {', '.join(tencent_ashare.keys())} OK", file=sys.stderr)
+    # B. A-share: Tencent minichart (minute data for sparklines)
+    tencent = fetch_ashare_indices_tencent()
+    if tencent:
+        results.update(tencent)
+        print(f"  A-share (Tencent): {', '.join(tencent.keys())} OK", file=sys.stderr)
     else:
         sina_ashare = fetch_ashare_indices_sina()
         if sina_ashare:
             results.update(sina_ashare)
             print(f"  A-share (Sina fallback): {', '.join(sina_ashare.keys())} OK", file=sys.stderr)
     
-    # C. Trading HK market: API pipeline
+    # C. HK: Tencent API
     hk = fetch_hk_index_tencent()
     if hk:
         results.update(hk)
         print(f"  HK (Tencent): OK", file=sys.stderr)
     
-    # D. US indices from Sina API (provides correct OHLC for sparklines)
-    us = fetch_us_indices_sina()
-    if us:
-        for key in us:
-            if key not in results:
-                results[key] = us[key]
-            else:
-                # Carry over open/high/low from Sina for accurate sparklines
-                for field in ['open', 'high', 'low', 'prev_close']:
-                    if us[key].get(field) is not None:
-                        results[key][field] = us[key][field]
-        print(f"  US indices (Sina): {', '.join(us.keys())} OK", file=sys.stderr)
+    # D. VIX: browser snapshot (VXMAIN futures) or Finnhub fallback
+    browser_data = monitor_futunn_pages()
+    if browser_data and 'VIX' in browser_data:
+        vix = browser_data['VIX']
+        if vix.get('price'):
+            results['VIX'] = vix
+            results['VIX']['source'] = 'futunn_browser'
+            print(f"  VIX (browser): {vix.get('price')}", file=sys.stderr)
+        elif vix.get('spark_path'):
+            if 'VIX' not in results: results['VIX'] = {}
+            results['VIX']['spark_path'] = vix['spark_path']
     
-    # E. VIX: browser snapshot provides VXMAIN futures, Finnhub provides .VIX spot
-    # Prefer browser snapshot (VXMAIN is the actual displayed value on futunn)
-    # Only fill if missing
-    if 'VIX' not in results:
-        vix = fetch_vix_finnhub()
-        if vix:
-            results.update(vix)
-            print(f"  VIX (Finnhub fill): OK", file=sys.stderr)
+    if 'VIX' not in results or not results['VIX'].get('price'):
+        vix_finn = fetch_vix_finnhub()
+        if vix_finn:
+            if 'VIX' not in results: results['VIX'] = {}
+            results['VIX'].update(vix_finn['VIX'])
+            print(f"  VIX (Finnhub fill): {vix_finn['VIX'].get('price')}", file=sys.stderr)
     
-    # F. Fill any remaining missing indices from browser snapshot
+    # E. Merge browser snapshot spark_path for VIX only
+    # For US indices, futunn_init provides better minute data
+    # For A-share/HK, Tencent provides better minute data
+    # Browser snapshot is no longer primary for sparklines (except VIX)
     if browser_data:
+        if 'VIX' not in results:
+            if 'VIX' in browser_data:
+                results['VIX'] = browser_data['VIX']
+        # For any index still missing, fill from browser data
         for key in browser_data:
             if key not in results:
                 results[key] = browser_data[key]
@@ -481,20 +593,16 @@ def assemble_output(index_data, date_str=None):
             change = entry.get('change', 0)
             chg_pct = entry.get('chg_pct', 0)
             
-            # Generate sparkline — prefer canvas-extracted path from browser snapshot
+            # Generate sparkline — prefer intraday minute data, fallback to canvas path
             spark_path = entry.get('spark_path')
             minute_prices = entry.get('minute_prices', [])
-            if spark_path and key in index_data and 'spark_path' in index_data[key]:
-                sparklines[key] = spark_path
-                # Determine color from change
-                change_val = entry.get('change', 0) or entry.get('chg_pct', 0)
-                if is_vix:
-                    sparklines[f'{key}_color'] = '#FF4060' if change_val >= 0 else '#00C853'
-                else:
-                    sparklines[f'{key}_color'] = '#FF4060' if change_val >= 0 else '#00C853'
-            elif minute_prices and len(minute_prices) >= 5:
+            if minute_prices and len(minute_prices) >= 5:
                 sparklines[key] = gen_sparkline_svg(minute_prices)
                 sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
+            elif spark_path and key in index_data and 'spark_path' in index_data[key]:
+                sparklines[key] = spark_path
+                change_val = entry.get('change', 0) or entry.get('chg_pct', 0)
+                sparklines[f'{key}_color'] = '#FF4060' if (change_val or 0) >= 0 else '#00C853'
             elif entry.get('open') is not None and entry.get('high') is not None:
                 o = entry['open']
                 h = entry['high']
