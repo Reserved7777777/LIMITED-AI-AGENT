@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-browser_monitor.py — Monitor all 8 index cards via Playwright canvas extraction.
+browser_monitor.py - Monitor all 8 index cards via Playwright canvas extraction.
 Extracts exact chart sparklines from each page's canvas for pixel-perfect matching.
 
 Key principle: For LINE charts (US indices/Tencent A-shares), the extraction looks for
@@ -205,14 +205,14 @@ def _extract_kline_spark_raw(page):
         if w < 100 or h < 50:
             return None
 
-        chart = img.crop((int(w * 0.10), int(h * 0.25), int(w * 0.87), int(h * 0.48)))
-        tiny = chart.resize((80, 32), Image.LANCZOS)
+        chart = img.crop((int(w * 0.08), int(h * 0.22), int(w * 0.88), int(h * 0.50)))
+        tiny = chart.resize((140, 48), Image.LANCZOS)
         tp = list(tiny.getdata())
-
+        
         closes = []
-        for cx in range(80):
+        for cx in range(140):
             last = None
-            for cy in range(32):
+            for cy in range(48):
                 r, g, b = tp[cy * 80 + cx][:3]
                 if r > 210 and g > 210 and b > 210:
                     continue
@@ -225,7 +225,13 @@ def _extract_kline_spark_raw(page):
         if len(valid) < 5:
             return None
         xs, ys = zip(*valid)
-        ys = list(_median_filter(ys, 3))
+        ys = list(_median_filter(ys, 5))
+        xs = list(xs)
+        # Downsample to ~78 points
+        if len(ys) > 80:
+            idxs = [int(i * (len(ys) - 1) / 77) for i in range(78)]
+            ys = [ys[i] for i in idxs]
+            xs = [xs[i] for i in idxs]
         return _pts_to_svg_path(list(zip(xs, ys)))
     except Exception as e:
         print("  WARN: kline_spark %s" % e, file=sys.stderr)
