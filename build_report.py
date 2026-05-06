@@ -143,7 +143,15 @@ def fmt_percent(val):
 # ============================================================
 # BUILD A SINGLE INDEX CARD
 # ============================================================
-def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color, is_vix=False, chart_img=None):
+def _fear_pct(vix):
+    """Convert VIX to a fear/panic coefficient percentage.
+    Formula: VIX=10 → 0%, VIX=45 → 100%, clamped 0-100.
+    """
+    pct = min(max(((vix - 10) / 35) * 100, 0), 100)
+    return round(pct)
+
+
+def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color, is_vix=False, chart_img=None, fear_pct=None):
     price_str = fmt_price(price)
     change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
     chgp_str = fmt_percent(chg_pct)
@@ -156,24 +164,17 @@ def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color
     price_cls = "up" if is_up else "down"
     change_cls = "up" if is_up else "down"
     
-    # Use real chart screenshot (WebP) when available, else SVG fallback
-    if chart_img:
+    if is_vix:
+        # VIX card: no sparkline, show fear coefficient instead
+        chart_html = f'<div style="display:flex;align-items:center;justify-content:center;height:44px;font-weight:900;font-size:15px;color:#000;line-height:1.2;">'
+        chart_html += f'恐慌系数 {fear_pct}%'
+        chart_html += '</div>'
+    elif chart_img:
         chart_html = f'<img class="spark" src="{chart_img}" alt="" style="width:100%;height:44px;display:block;object-fit:contain;object-position:right center;flex-shrink:1;"/>'
     else:
         chart_html = f'<svg class="spark" viewBox="0 -4 80 32"><path d="{spark_path}" fill="none" stroke="{spark_color}" stroke-width="1.8" stroke-linecap="round"/></svg>'
     
-    if is_vix:
-        # VIX color: same up/down convention as other indices
-        return f'''<a class="idx-card" href="{href}" target="_blank">
-      <div class="info">
-        <span class="name">{name}</span>
-        <div class="price {price_cls}">{price_str}</div>
-        <div class="change {change_cls}">{change_str} <span class="sub2">{chgp_str}</span></div>
-      </div>
-      <div class="chart">{chart_html}</div>
-    </a>'''
-    else:
-        return f'''<a class="idx-card" href="{href}" target="_blank">
+    return f'''<a class="idx-card" href="{href}" target="_blank">
       <div class="info">
         <span class="name">{name}</span>
         <div class="price {price_cls}">{price_str}</div>
@@ -191,11 +192,11 @@ def build_idx_row(report_data, sparklines):
         ('SPX', 'S&P 500',     'https://www.futunn.com/index/.SPX-US',       False),
         ('NDX', 'NASDAQ',       'https://www.futunn.com/index/.IXIC-US',      False),
         ('DJI', '道琼斯',        'https://www.futunn.com/index/.DJI-US',      False),
-        ('VIX', 'VIX',          'https://www.futunn.com/futures/VXMAIN-US',   True),
+        ('HK',  '恒生科技',       'https://www.futunn.com/index/800700-HK',  False),
         ('SH',  '上证指数',       'https://www.futunn.com/index/000001-SH',   False),
         ('SZ',  '深证成指',       'https://www.futunn.com/index/399001-SZ',   False),
         ('CY',  '创业板指',       'https://www.futunn.com/index/399006-SZ',   False),
-        ('HK',  '恒生科技',       'https://www.futunn.com/index/800700-HK', False),
+        ('VIX', 'VIX',          'https://www.futunn.com/futures/VXMAIN-US',   True),
     ]
     
     cards = []
@@ -206,8 +207,8 @@ def build_idx_row(report_data, sparklines):
         chg_pct = idx_data.get('chg_pct', 0)
         sp = sparklines.get(key, f"M1,16 L119,16")
         sc = sparklines.get(f'{key}_color', '#00C853')
-        # Use SVG sparkline from real chart data
-        cards.append(build_index_card(name, price, change, chg_pct, href, sp, sc, is_vix))
+        fear_pct = _fear_pct(price) if is_vix else None
+        cards.append(build_index_card(name, price, change, chg_pct, href, sp, sc, is_vix, fear_pct=fear_pct))
     
     indent = '    '
     return '<div class="idx-row">\n' + indent + ('\n' + indent).join(cards) + '\n  </div>'
