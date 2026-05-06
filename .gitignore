@@ -1,0 +1,17 @@
+# Workspace gitignore — STOCK-REPORT & 办公工具
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.env
+auth_output.txt
+device_code_auth.py
+email_config.json
+email_send.log
+debug_futunn.py
+build_report_v2.py
+__pycache__
+futunn_default_sources.txt
+*.csv
+*.xlsx
+avatar.jpg
