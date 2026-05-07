@@ -363,9 +363,15 @@ def sync_indices(html, date_str=None):
             card_end = card_start + 800
         card_html = html[card_start:card_end + 4]
         
-        # 1. Format price with proper grouping
+        # 1. Determine correct color class (accounting for US inversion + VIX)
         is_up = chg_val is not None and chg_val >= 0
-        cls = 'up' if is_up else 'down'
+        _us_indices = {'SPX', 'NDX', 'DJI'}
+        if key == 'VIX':
+            cls = 'up' if is_up else 'down'     # VIX: up=red, down=green
+        elif key in _us_indices:
+            cls = 'down' if is_up else 'up'     # US: up=green(down), down=red(up)
+        else:
+            cls = 'up' if is_up else 'down'     # A-share/HK: up=red, down=green
         
         # Format price with commas
         if isinstance(price, (int, float)):
@@ -443,6 +449,33 @@ def sync_indices(html, date_str=None):
     
     if updates:
         print(f"  Indices synced: {updates} cards")
+        # Self-check: validate all 8 index card colors post-update
+        _errors = []
+        _us_set = {'S&P 500', 'NASDAQ', '道琼斯'}
+        _vix_set = {'VIX'}
+        for _key, _label in card_map.items():
+            _pos = html.find(f'>{_label}</span>')
+            if _pos < 0: continue
+            _chunk = html[_pos:_pos+300]
+            _pc = re.search(r'class="price (up|down|flat)">', _chunk)
+            _cc = re.search(r'class="change (up|down|flat)">([+-]?[^<]+)', _chunk)
+            if not _pc or not _cc: continue
+            _actual = _pc.group(1)
+            _cv = _cc.group(2).strip()
+            if _actual == 'flat': continue
+            _is_up = _cv.startswith('+')
+            if _label in _vix_set:
+                _exp = 'up' if _is_up else 'down'
+            elif _label in _us_set:
+                _exp = 'down' if _is_up else 'up'
+            else:
+                _exp = 'up' if _is_up else 'down'
+            if _actual != _exp:
+                _errors.append(f'{_label}: class={_actual} expected={_exp} ({_cv})')
+        if _errors:
+            print(f"  ⚠️  COLOR SELF-CHECK FAILED (will not write): {'; '.join(_errors)}", file=sys.stderr)
+            # Fallback: rebuild from scratch
+            return 'REBUILD_NEEDED'
     return html
 
 
@@ -780,7 +813,21 @@ def main():
 
 
     html = sync_indices(html, date_str=date)
-
+    if html == 'REBUILD_NEEDED':
+        print("  ===== COLOR ERROR: triggering full rebuild =====", file=sys.stderr)
+        import subprocess
+        subprocess.run([
+            'python3', '/root/.openclaw/workspace/build_report.py',
+            '--date', date,
+            '--template', '/root/.openclaw/workspace/report-template.html',
+            '--output', f'/var/www/openclaw/report-{date}.html',
+            '--data', f'/tmp/report-data-{date}.json',
+            '--set-env', 'd7qpn5hr01qudmin3la0d7qpn5hr01qudmin3lag'
+        ], timeout=120)
+        with open(f'/var/www/openclaw/report-{date}.html') as _f:
+            html = _f.read()
+        print(f"  ✅ Full rebuild completed, {len(html)} bytes")
+    
     updates = []
 
     # 1. XAU/USD

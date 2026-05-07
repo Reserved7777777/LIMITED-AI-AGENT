@@ -673,6 +673,37 @@ def build_report(date_str, template_path, output_path, data_json=None):
         print(f"  ✅ SELF-CHECK: all {len(_required_markers)} markers present")
     
     # ============================================================
+    # COLOR VALIDATION: prevent writing files with wrong index card colors
+    # ============================================================
+    _idx_names_check = ['S&P 500', 'NASDAQ', '道琼斯', 'VIX', '上证指数', '深证成指', '创业板指', '恒生科技']
+    _us_set_check = {'S&P 500', 'NASDAQ', '道琼斯'}
+    _vix_set_check = {'VIX'}
+    _color_ok = True
+    for _name in _idx_names_check:
+        _pos = html.find(f'>{_name}</span>')
+        if _pos < 0: continue
+        _chunk = html[_pos:_pos+350]
+        _pc = re.search(r'class="price (up|down|flat)">([^<]+)', _chunk)
+        _cc = re.search(r'class="change (up|down|flat)">([+-][^<]+)', _chunk)
+        if not _pc or not _cc: continue
+        _actual = _pc.group(1)
+        if _actual == 'flat': continue
+        _chg_str = _cc.group(2).strip()
+        _is_up_flag = _chg_str.startswith('+')
+        if _name in _vix_set_check:
+            _expected = 'up' if _is_up_flag else 'down'
+        elif _name in _us_set_check:
+            _expected = 'down' if _is_up_flag else 'up'
+        else:
+            _expected = 'up' if _is_up_flag else 'down'
+        if _actual != _expected:
+            _color_ok = False
+            print(f"  ❌ COLOR VALIDATION: {_name} class={_actual} expected={_expected} (chg={_chg_str})", file=sys.stderr)
+    if not _color_ok:
+        print(f"  ❌ ABORTING WRITE: index card color mismatch detected", file=sys.stderr)
+        raise RuntimeError("Index card color validation failed")
+    
+    # ============================================================
     # COLOR CHECK: validate up/down classes match actual direction
     # ============================================================
     _color_errors = []
@@ -681,7 +712,7 @@ def build_report(date_str, template_path, output_path, data_json=None):
     # US indices (SPX/NDX/DJI/VIX): up=green(down class), down=red(up class)
     # A-share/HK (SH/SZ/CY/HK): up=red(up class), down=green(down class)
     # Flat (0 change): flat class (grey)
-    _us_idx = {'S&P 500', 'NASDAQ', '道琼斯', 'VIX'}
+    _us_idx = {'S&P 500', 'NASDAQ', '道琼斯'}
     _idx_names = ['S&P 500', 'NASDAQ', '道琼斯', 'VIX', '上证指数', '深证成指', '创业板指', '恒生科技']
     for _name in _idx_names:
         _pos = html.find(f'>{_name}</span>')
@@ -699,7 +730,9 @@ def build_report(date_str, template_path, output_path, data_json=None):
             pass
         else:
             _is_up = _cv.startswith('+')
-            if _name in _us_idx:
+            if _name == 'VIX':
+                _expected = 'up' if _is_up else 'down'  # VIX: up=red, down=green
+            elif _name in _us_idx:
                 _expected = 'down' if _is_up else 'up'  # US: up=green(down)
             else:
                 _expected = 'up' if _is_up else 'down'  # A-share: up=red(up)
