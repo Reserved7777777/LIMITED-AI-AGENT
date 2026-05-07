@@ -60,16 +60,18 @@ def check_report(path):
         cv = cc.group(2).strip() if cc.group(2) else ''
         is_up = cv.startswith('+')
         
-        if name in us_idx:
+        if name == 'VIX':
+            # VIX: up=fear=red(up), down=calm=green(down) — same as A-share
+            expected = 'up' if is_up else 'down'
+        elif name in us_idx:
             expected = 'down' if is_up else 'up'
         else:
-            expected = 'up' if is_up else 'up' if is_up else 'down'
             expected = 'up' if is_up else 'down'
         
         if p_cls != expected or c_cls != expected:
             errors.append(f'[指数] {name}: class=p={p_cls} c={c_cls} → 应是 {expected} (涨跌={cv})')
         else:
-            print(f"  ✅ {name}: {price_str} {cv} → {'green↓' if name in us_idx and is_up else 'red↑' if is_up else 'green↓'} class={p_cls}")
+            print(f"  ✅ {name}: {price_str} {cv} → {'green↓' if name not in us_idx and not is_up else 'green↓' if name == 'VIX' and not is_up else 'red↑' if is_up else 'green↓'} class={p_cls}")
     
     # 2. 个股检查（所有tier）
     print("\n🔍 二、个股涨跌色")

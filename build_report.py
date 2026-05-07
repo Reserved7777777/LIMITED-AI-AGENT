@@ -162,10 +162,14 @@ def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color
         change_cls = "flat"
     else:
         is_up = change > 0 if (change is not None and change != 0) else (chg_pct > 0 if chg_pct is not None else True)
-        # Color convention: 
+        # Color convention:
+        #   VIX: up=fear=red(up), down=calm=green(down) — NOT inverted like US stocks
         #   A-share/HK: up=red(up class), down=green(down class)
-        #   US: up=green(down class), down=red(up class)
-        if is_us:
+        #   US (non-VIX): up=green(down class), down=red(up class)
+        if is_vix:
+            price_cls = "up" if is_up else "down"
+            change_cls = "up" if is_up else "down"
+        elif is_us:
             price_cls = "down" if is_up else "up"
             change_cls = "down" if is_up else "up"
         else:
