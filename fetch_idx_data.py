@@ -638,17 +638,24 @@ def assemble_output(index_data, date_str=None):
             minute_prices = entry.get('minute_prices', [])
             if minute_prices and len(minute_prices) >= 5:
                 sparklines[key] = gen_sparkline_svg(minute_prices)
-                sparklines[f'{key}_color'] = '#FF4060' if minute_prices[-1] >= minute_prices[0] else '#00C853'
+                # Sparkline color matches the index card daily direction, not intraday open
+                is_up_day = (change is not None and change >= 0) or (chg_pct is not None and chg_pct >= 0)
+                if is_vix:
+                    # VIX: up=fear=orange, down=calm=green
+                    sparklines[f'{key}_color'] = '#FF6900' if is_up_day else '#00C853'
+                else:
+                    sparklines[f'{key}_color'] = '#FF4060' if is_up_day else '#00C853'
             elif entry.get('open') is not None and entry.get('high') is not None:
                 o = entry['open']
                 h = entry['high']
                 l = entry['low']
                 c = price
                 sparklines[key] = gen_sparkline_from_ohlc(o, h, l, c)
+                is_up_day = (change is not None and change >= 0) or (chg_pct is not None and chg_pct >= 0)
                 if is_vix:
-                    sparklines[f'{key}_color'] = '#FF6900' if c >= o else '#00C853'
+                    sparklines[f'{key}_color'] = '#FF6900' if is_up_day else '#00C853'
                 else:
-                    sparklines[f'{key}_color'] = '#FF4060' if c >= o else '#00C853'
+                    sparklines[f'{key}_color'] = '#FF4060' if is_up_day else '#00C853'
             elif entry.get('high') is not None and entry.get('low') is not None:
                 # Has high/low from browser snapshot but no open
                 h = entry['high']

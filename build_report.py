@@ -214,6 +214,12 @@ def build_idx_row(report_data, sparklines):
         chg_pct = idx_data.get('chg_pct', 0)
         sp = sparklines.get(key, f"M1,16 L119,16")
         sc = sparklines.get(f'{key}_color', '#00C853')
+        # Swap sparkline color for US indices (data uses A-share convention)
+        # VIX excluded: uses its own color (orange up / green down) — don't swap
+        if is_us and not is_vix and sc in ('#FF4060', '#00C853'):
+            # A-share: up=red(#FF4060), down=green(#00C853)
+            # US:     up=green(#00C853), down=red(#FF4060)
+            sc = '#00C853' if sc == '#FF4060' else '#FF4060'
         fear_pct = _fear_pct(price) if is_vix else None
         cards.append(build_index_card(name, price, change, chg_pct, href, sp, sc, is_vix, fear_pct=fear_pct, is_us=is_us))
     
