@@ -151,7 +151,7 @@ def _fear_pct(vix):
     return round(pct)
 
 
-def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color, is_vix=False, chart_img=None, fear_pct=None):
+def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color, is_vix=False, chart_img=None, fear_pct=None, is_us=False):
     price_str = fmt_price(price)
     change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
     chgp_str = fmt_percent(chg_pct)
@@ -161,8 +161,15 @@ def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color
         is_up = chg_pct > 0
     else:
         is_up = True
-    price_cls = "up" if is_up else "down"
-    change_cls = "up" if is_up else "down"
+    # Color convention: 
+    #   A-share/HK: up=red(up class), down=green(down class)
+    #   US: up=green(down class), down=red(up class)
+    if is_us:
+        price_cls = "down" if is_up else "up"
+        change_cls = "down" if is_up else "up"
+    else:
+        price_cls = "up" if is_up else "down"
+        change_cls = "up" if is_up else "down"
     
     if is_vix:
         # VIX card: no sparkline, show fear coefficient instead
@@ -187,20 +194,20 @@ def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color
 # BUILD INDEX ROW (ALL 8 CARDS AT ONCE)
 # ============================================================
 def build_idx_row(report_data, sparklines):
-    # idx_config: (key, card_name, futunn_name_in_link, url, is_vix)
+    # idx_config: (key, card_name, futunn_name_in_link, url, is_vix, is_us)
     idx_config = [
-        ('SPX', 'S&P 500',     'https://www.futunn.com/index/.SPX-US',       False),
-        ('NDX', 'NASDAQ',       'https://www.futunn.com/index/.IXIC-US',      False),
-        ('DJI', '道琼斯',        'https://www.futunn.com/index/.DJI-US',      False),
-        ('HK',  '恒生科技',       'https://www.futunn.com/index/800700-HK',  False),
-        ('SH',  '上证指数',       'https://www.futunn.com/index/000001-SH',   False),
-        ('SZ',  '深证成指',       'https://www.futunn.com/index/399001-SZ',   False),
-        ('CY',  '创业板指',       'https://www.futunn.com/index/399006-SZ',   False),
-        ('VIX', 'VIX',          'https://www.futunn.com/futures/VXMAIN-US',   True),
+        ('SPX', 'S&P 500',     'https://www.futunn.com/index/.SPX-US',       False, True),
+        ('NDX', 'NASDAQ',       'https://www.futunn.com/index/.IXIC-US',      False, True),
+        ('DJI', '道琼斯',        'https://www.futunn.com/index/.DJI-US',      False, True),
+        ('HK',  '恒生科技',       'https://www.futunn.com/index/800700-HK',  False, False),
+        ('SH',  '上证指数',       'https://www.futunn.com/index/000001-SH',   False, False),
+        ('SZ',  '深证成指',       'https://www.futunn.com/index/399001-SZ',   False, False),
+        ('CY',  '创业板指',       'https://www.futunn.com/index/399006-SZ',   False, False),
+        ('VIX', 'VIX',          'https://www.futunn.com/futures/VXMAIN-US',   True,  True),
     ]
     
     cards = []
-    for key, name, href, is_vix in idx_config:
+    for key, name, href, is_vix, is_us in idx_config:
         idx_data = report_data.get('indices', {}).get(key, {})
         price   = idx_data.get('price', 0)
         change  = idx_data.get('change', 0)
@@ -208,7 +215,7 @@ def build_idx_row(report_data, sparklines):
         sp = sparklines.get(key, f"M1,16 L119,16")
         sc = sparklines.get(f'{key}_color', '#00C853')
         fear_pct = _fear_pct(price) if is_vix else None
-        cards.append(build_index_card(name, price, change, chg_pct, href, sp, sc, is_vix, fear_pct=fear_pct))
+        cards.append(build_index_card(name, price, change, chg_pct, href, sp, sc, is_vix, fear_pct=fear_pct, is_us=is_us))
     
     indent = '    '
     return '<div class="idx-row">\n' + indent + ('\n' + indent).join(cards) + '\n  </div>'
@@ -275,10 +282,15 @@ def build_tier_table(tier_data, tb_cls='tb-high'):
         else:
             is_up = True
         
+        # Detect market: numeric symbols = A-share, alphabetic = US
+        is_us_stock = not sym.isdigit() if sym else False
         price_str = fmt_price(price)
         change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
         chgp_str = fmt_percent(chgp)
-        p_cls = "up" if is_up else "down"
+        if is_us_stock:
+            p_cls = "down" if is_up else "up"  # US: up=green(down)
+        else:
+            p_cls = "up" if is_up else "down"  # A-share: up=red(up)
         
         tag_items = ' '.join(f'<span class="tb-tag {tb_cls}">{t.strip()}</span>' for t in tag.split('·') if t.strip()) if tag else ''
         rows.append(f'''<a class="tbl-row" href="{href}" target="_blank">
@@ -655,6 +667,9 @@ def build_report(date_str, template_path, output_path, data_json=None):
     _color_errors = []
     
     # 2a. Check 8 index cards: class="price up/down" + class="change up/down"
+    # US indices (SPX/NDX/DJI/VIX): up=green(down class), down=red(up class)
+    # A-share/HK (SH/SZ/CY/HK): up=red(up class), down=green(down class)
+    _us_idx = {'S&P 500', 'NASDAQ', '道琼斯', 'VIX'}
     _idx_names = ['S&P 500', 'NASDAQ', '道琼斯', 'VIX', '上证指数', '深证成指', '创业板指', '恒生科技']
     for _name in _idx_names:
         _pos = html.find(f'>{_name}</span>')
@@ -667,8 +682,10 @@ def build_report(date_str, template_path, output_path, data_json=None):
         _pv = float(_pc.group(2).replace(',','')) if _pc else 0
         _cv = _cc.group(2).strip() if _cc else ''
         _is_up = _cv.startswith('+')
-        _expected = 'up' if _is_up else 'down'
-        # VIX: down is OK for futures too (same logic)
+        if _name in _us_idx:
+            _expected = 'down' if _is_up else 'up'  # US: up=green(down)
+        else:
+            _expected = 'up' if _is_up else 'down'  # A-share: up=red(up)
         _actual = _pc.group(1) if _pc else '?'
         if _actual != _expected:
             _color_errors.append(f'索引卡[{_name}]: price class={_actual} expected={_expected} (chg={_cv})')
@@ -689,19 +706,24 @@ def build_report(date_str, template_path, output_path, data_json=None):
     for _tsec in _tier_sections:
         _rows = _tsec.split('<a class="tbl-row"')[1:]
         for _ri, _row in enumerate(_rows):
-            # Extract symbol
+            # Extract symbol (numeric=A-share, alphabetic=US)
             _sym_m = re.search(r'col-sym">([^<]+)', _row)
             _sym = _sym_m.group(1) if _sym_m else f'row{_ri}'
+            _is_us_stock = not _sym.isdigit() if _sym and _sym != f'row{_ri}' else False
             # Extract chgp class
             _chgp_up = 'chgp up"' in _row or 'chgp up ' in _row
             _chgp_down = 'chgp down"' in _row or 'chgp down ' in _row
             # Determine direction from chg_pct value
             _pct_m = re.search(r'col-chgp[^>]*>([+-]?[\d.]+)', _row)
             _pct_val = float(_pct_m.group(1)) if _pct_m else 0
-            _expected = 'up' if _pct_val >= 0 else 'down'
+            _is_up = _pct_val >= 0
+            if _is_us_stock:
+                _expected = 'down' if _is_up else 'up'  # US: up=green(down)
+            else:
+                _expected = 'up' if _is_up else 'down'  # A-share: up=red(up)
             _actual = 'up' if _chgp_up else ('down' if _chgp_down else '?')
             if _actual != _expected:
-                _color_errors.append(f'ETF[{_sym}]: chgp={_actual} expected={_expected} (pct={_pct_val:+.2f}%)')
+                _color_errors.append(f'股票[{_sym}]: chgp={_actual} expected={_expected} (pct={_pct_val:+.2f}%)')
     
     # 2d. Check VIX sparkline for edge artifacts
     _vix_pos = html.find('>VIX</span>')
