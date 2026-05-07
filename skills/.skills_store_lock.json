@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "skills": {
+    "travelassistant": {
+      "name": "旅游助手-CN",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=travelassistant",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "amap-lbs-skill": {
+      "name": "Gaode Map LBS - 高德官方地图综合服务 Skill",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=amap-lbs-skill",
+      "source": "skillhub",
+      "version": "2.0.1"
+    },
+    "travel-planner-pro": {
+      "name": "智能旅游规划师",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=travel-planner-pro",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "claude-code": {
+      "name": "Claude Code Integration",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=claude-code",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "answeroverflow": {
+      "name": "Answer Overflow",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=answeroverflow",
+      "source": "skillhub",
+      "version": "1.0.2"
+    },
+    "office-automation-pro": {
+      "name": "办公自动化Pro",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=office-automation-pro",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "pdf-toolkit-pro": {
+      "name": "PDF Toolkit Pro",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=pdf-toolkit-pro",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "academic-pre-review-committee": {
+      "name": "论文学术预审委员会",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=academic-pre-review-committee",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "arxiv-watcher": {
+      "name": "ArXiv Watcher",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=arxiv-watcher",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "literature-review": {
+      "name": "Literature Review",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=literature-review",
+      "source": "skillhub",
+      "version": "1.2.0"
+    },
+    "stock-price-query": {
+      "name": "股票查询 / Stock Price Query",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=stock-price-query",
+      "source": "skillhub",
+      "version": "1.2.1"
+    },
+    "stock-board": {
+      "name": "股票打板筛选",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=stock-board",
+      "source": "skillhub",
+      "version": "1.0.0"
+    }
+  }
+}

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日动量报告 - Marcus</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F1112; --card: #1A1C1E; --card2: #222528;
+  --border: rgba(105,108,112,0.15); --text: #E3E4E5;
+  --sub: #9B9B9E; --dim: #6D7175;
+  --orange: #FF6900; --green: #00C853; --red: #FF4060;
+  --up: #FF4060; --down: #00C853; --link: #4E7FCE;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Inter", "Noto Sans SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", -apple-system, sans-serif;
+  background: var(--bg); color: var(--text);
+  padding: 12px; -webkit-font-smoothing: antialiased;
+  font-size: 13px;
+  -webkit-overflow-scrolling:touch;
+}
+.container { max-width: 960px; margin: 0 auto; }
+
+/* HEADER */
+.header { display:flex; align-items:center; justify-content:space-between; padding:12px 0 14px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.header .logo { display:flex; align-items:center; gap:8px; }
+.header .logo .badge { width:24px; height:24px; background:var(--orange); border-radius:4px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px; }
+.header .logo .name { font-family:"Inter","Noto Sans SC",sans-serif; font-size:14px; font-weight:600; color:var(--text); margin-left:4px; }
+.header .right { text-align:right; }
+.header .right .date {   font-size:11px; color:var(--dim); }
+.header .right .status {   font-size:10px; color:var(--orange); background:rgba(255,105,0,0.08); padding:1px 6px; border-radius:2px; display:inline-block; margin-top:1px; }
+
+/* INDEX ROW */
+.idx-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+.idx-row .idx-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:7px 9px; display:grid;
+  grid-template-columns:auto 1fr; align-items:center;
+  text-decoration:none; color:var(--text);
+  transition:background .15s; cursor:pointer; height:68px; gap:6px;
+  -webkit-transform:translateZ(0); transform:translateZ(0);
+}
+.idx-row .idx-card:hover { background:var(--card2); }
+.idx-row .idx-card .info { display:flex; flex-direction:column; justify-content:center; white-space:nowrap; }
+.idx-row .idx-card .info .name { font-size:10px; color:var(--dim); font-weight:500; }
+.idx-row .idx-card .info .price { font-weight:700; font-size:14px; letter-spacing:-0.3px; margin-top:1px; }
+.idx-row .idx-card .info .change { font-weight:600; font-size:10px; margin-top:1px; }
+.idx-row .idx-card .info .change .sub2 { font-size:9px; margin-left:4px; }
+.idx-row .idx-card .chart { display:flex; align-items:center; justify-content:flex-end; overflow:hidden; }
+.idx-row .idx-card .chart svg { display:block; width:100%; height:44px; flex-shrink:1; -webkit-transform:translateZ(0); transform:translateZ(0); }
+
+.up { color:var(--up); }
+.down { color:var(--down); }
+
+/* STANCE BAR */
+.stance-bar { display:flex; gap:6px; margin-bottom:10px; }
+.stance-item {
+  flex:1; background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;
+}
+.stance-item .info { flex:1; }
+.stance-item .info .lbl { font-size:10px; color:var(--dim); font-weight:500; }
+.stance-item .info .val {   font-size:13px; }
+.stance-item .mbar { width:60px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
+.stance-item .mbar .fill { height:100%; border-radius:2px; }
+
+/* INSIGHT */
+.insight {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:9px 11px; margin-bottom:10px;
+  font-size:12px; color:var(--sub); line-height:1.6;
+  display:grid; grid-template-columns:60px 1fr; gap:10px; align-items:center;
+}
+.insight .label {
+  font-size:10px; color:var(--orange); white-space:nowrap;
+  padding:4px 0; min-height:28px;
+  background:rgba(255,105,0,0.08); border-radius:2px;
+  display:flex; align-items:center; justify-content:center;
+  text-align:left; height:100%;}
+
+/* TABLE */
+.table-wrap { border:1px solid var(--border); border-radius:6px; margin-bottom:10px; overflow-x:auto; -webkit-overflow-scrolling:touch; -webkit-transform:translateZ(0); transform:translateZ(0); will-change:transform; scrollbar-width:none; }
+.table-wrap::-webkit-scrollbar { display:none; }
+.tb-scroll { display:flex; flex-direction:column; min-width:fit-content; background:var(--card); }
+.table-hd { height:36px; align-items:center;
+  display:flex; padding:8px 14px; background:var(--card2);
+  border-bottom:1px solid var(--border); font-size:10px; color:var(--dim); font-weight:500;
+}
+.table-hd > span { flex-shrink:0; text-align:left; }
+.col-seq { width:32px; }
+.col-sym { width:60px; }
+.col-name { width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.col-last { width:88px; }
+.col-chg { width:88px; }
+.col-chgp { width:88px; }
+.col-vol { width:88px; }
+.col-amt { width:88px; }
+.col-cap { width:88px; }
+.col-tag { width:200px; }
+.tb-tag { display:inline-flex; align-items:center; justify-content:center; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:600; line-height:1.4; white-space:nowrap; height:20px; box-sizing:border-box; }
+.col-tag { display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:flex-end; min-height:24px; padding-right:12px; }
+.tb-high { background:rgba(0,200,83,0.10); color:var(--green); }
+.tb-mid { background:rgba(255,105,0,0.10); color:var(--orange); }
+.tb-low { background:rgba(78,127,206,0.10); color:var(--link); }
+.tier-sub { font-weight:700; padding:2px 8px; border-radius:3px; font-size:10px; display:inline-block; }
+.tier-sub-h { background:rgba(0,200,83,0.12); color:var(--green); }
+.tier-sub-m { background:rgba(255,105,0,0.12); color:var(--orange); }
+.tier-sub-l { background:rgba(78,127,206,0.12); color:var(--link); }
+
+.tbl-row {
+  display:flex; align-items:center; padding:9px 14px; text-decoration:none; color:var(--text);
+  border-bottom:1px solid var(--border); transition:background .12s;
+  background:var(--card);
+}
+.tbl-row:hover { background:var(--card2); }
+.tbl-row:last-child { border-bottom:none; }
+
+
+.tbl-row > span { flex-shrink:0; font-size:12px; white-space:nowrap; }
+.tbl-row .s-sym {  font-family:Verdana; color:var(--link); }
+.tbl-row .s-name { font-family:"Microsoft YaHei","Noto Sans SC","PingFang SC",sans-serif; font-size:11px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tbl-row .s-last { font-weight:600; }
+
+/* SECTION LABELS */
+.sec-label {
+  display:flex; align-items:center; gap:6px; padding:5px 0;
+  font-size:12px; font-weight:600; color:var(--sub);
+}
+.sec-label .dot-tier { width:10px; display:inline-block; }
+.sec-label .right { margin-left:auto; font-size:10px; color:var(--dim); font-weight:400; }
+
+/* COMMODITY / FX */
+.cfx-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+.cfx-item {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:9px 11px; display:flex; flex-direction:column;
+}
+.cfx-item .l { font-size:10px; color:var(--dim); font-weight:500; text-transform:uppercase; letter-spacing:0.3px; }
+.cfx-item .p {   font-size:14px; font-weight:700; margin-top:3px; }
+.cfx-item .c {   font-size:10px; font-weight:600; margin-top:1px; }
+
+/* RISK */
+.risk-list { list-style:none; margin-bottom:10px; }
+.risk-item {
+  display:flex; gap:6px; align-items:flex-start;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:8px 11px; margin-bottom:4px;
+  text-decoration:none; color:var(--sub); transition:background .15s; cursor:pointer;
+}
+.risk-item:hover { background:var(--card2); }
+.risk-item .r-dot { width:4px; height:4px; border-radius:50%; margin:6px 6px 0 0; flex-shrink:0; background:var(--orange); }
+.risk-item .r-text {   font-size:12px; color:var(--sub); line-height:1.6; }
+.risk-item .r-text strong { color:var(--text); font-weight:600; }
+
+/* EVENTS */
+.events { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin:8px 0; }
+.ev-item { background:var(--card); border:1px solid var(--border); border-radius:5px; padding:7px; display:block; text-decoration:none; color:var(--text); transition:background .15s; cursor:pointer; }
+.ev-item:hover { background:var(--card2); }
+.ev-item .d {   font-size:10px; color:var(--orange); }
+.ev-item .e {   font-size:11px; color:var(--dim); margin-top:1px; }
+.ev-stars { font-size:10px; color:var(--orange); letter-spacing:1px; margin-top:2px; }
+
+/* ANALYSIS TEXT */
+.analysis {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; padding:10px 12px; margin-bottom:10px;
+}
+.analysis .a-label {   font-size:11px; color:var(--orange); margin-bottom:4px; }
+.analysis .a-body {   font-size:12px; color:var(--sub); line-height:1.7; }
+.analysis .a-body strong { color:var(--text); }
+
+/* FOOTER */
+.footer { display:flex; justify-content:space-between; padding:10px 0; border-top:1px solid var(--border); margin-top:10px; font-family:Verdana; font-weight:700; font-size:10px; color:var(--dim); }
+.footer a { color:var(--link); text-decoration:none; }
+.footer a:hover { color:var(--orange); }
+
+@media (max-width:768px) {
+
+  .idx-row { grid-template-columns:repeat(2,1fr); }
+  .idx-row .idx-card { height:62px; padding:5px 7px; gap:4px; }
+  .idx-row .idx-card .info .price { font-size:12px; }
+  .idx-row .idx-card .info .change { font-size:9px; }
+  .idx-row .idx-card .chart svg { height:36px; }
+  .stance-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+  .cfx-grid { grid-template-columns:repeat(2,1fr); }
+  .events { grid-template-columns:repeat(2,1fr); }
+  .col-amt, .col-cap, .col-vol { display:none; }
+  .col-chg { display:none; }
+  .col-tag { width:200px; }
+  .tbl-row { padding:7px 10px; }
+  .table-hd { height:36px; align-items:center; padding:6px 10px; }
+  .col-tag { display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; min-height:24px; padding-right:8px; }
+  .col-tag > .tb-tag + .tb-tag { margin-left:8px; }
+  .tb-tag { padding:2px 8px; font-size:10px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="badge">M</div>
+      <span class="name">每日动量报告</span>
+    </div>
+    <div class="right">
+      <div class="date">2026.04.30 周四</div>
+      <span class="status">节前收官</span>
+    </div>
+  </div>
+
+  <!-- ===== INDICES ===== -->
+  <div class="idx-row">
+    <a class="idx-card" href="https://www.futunn.com/index/.SPX-US" target="_blank">
+      <div class="info">
+        <span class="name">S&P 500</span>
+        <div class="price down">5,189.40</div>
+        <div class="change down">-35.40 <span class="sub2">-0.68%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,3.7 L2.0,7.6 L3.0,5.9 L4.0,6.5 L4.9,2.8 L5.9,3.4 L6.9,2.0 L7.9,8.4 L8.9,6.0 L9.9,9.3 L10.9,8.0 L11.9,6.0 L12.8,9.9 L13.8,8.8 L14.8,5.5 L15.8,6.6 L16.8,9.3 L17.8,6.6 L18.8,5.2 L19.8,11.5 L20.7,5.6 L21.7,6.7 L22.7,9.6 L23.7,11.2 L24.7,5.3 L25.7,10.3 L26.7,12.4 L27.7,12.5 L28.6,7.0 L29.6,9.1 L30.6,7.7 L31.6,8.5 L32.6,10.2 L33.6,7.1 L34.6,11.9 L35.6,10.7 L36.5,8.8 L37.5,10.6 L38.5,9.0 L39.5,11.4 L40.5,10.6 L41.5,15.9 L42.5,14.7 L43.5,14.4 L44.4,16.3 L45.4,15.3 L46.4,16.5 L47.4,15.4 L48.4,12.8 L49.4,15.1 L50.4,15.3 L51.4,16.7 L52.3,16.5 L53.3,11.6 L54.3,14.0 L55.3,14.5 L56.3,18.1 L57.3,14.0 L58.3,18.6 L59.3,17.1 L60.2,12.6 L61.2,15.5 L62.2,16.4 L63.2,15.6 L64.2,14.6 L65.2,15.3 L66.2,19.7 L67.2,21.5 L68.1,19.5 L69.1,20.1 L70.1,20.7 L71.1,15.3 L72.1,16.0 L73.1,20.6 L74.1,18.2 L75.1,20.4 L76.0,16.6 L77.0,20.3 L78.0,22.0 L79.0,20.4" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/.IXIC-US" target="_blank">
+      <div class="info">
+        <span class="name">NASDAQ</span>
+        <div class="price down">16,210.30</div>
+        <div class="change down">-132.20 <span class="sub2">-0.81%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,4.2 L2.0,6.1 L3.0,4.0 L4.0,2.1 L4.9,5.7 L5.9,7.2 L6.9,2.0 L7.9,5.6 L8.9,8.7 L9.9,9.2 L10.9,9.0 L11.9,5.6 L12.8,4.6 L13.8,7.4 L14.8,10.1 L15.8,8.1 L16.8,4.0 L17.8,7.5 L18.8,4.6 L19.8,5.6 L20.7,11.7 L21.7,7.0 L22.7,7.5 L23.7,8.7 L24.7,10.7 L25.7,8.3 L26.7,12.2 L27.7,10.2 L28.6,10.3 L29.6,7.0 L30.6,7.7 L31.6,12.2 L32.6,10.7 L33.6,13.2 L34.6,8.3 L35.6,8.8 L36.5,13.0 L37.5,10.8 L38.5,11.2 L39.5,14.6 L40.5,10.6 L41.5,12.3 L42.5,10.9 L43.5,12.8 L44.4,16.7 L45.4,14.6 L46.4,16.9 L47.4,10.8 L48.4,11.4 L49.4,11.9 L50.4,15.8 L51.4,17.7 L52.3,12.2 L53.3,11.9 L54.3,18.1 L55.3,15.5 L56.3,18.6 L57.3,14.0 L58.3,14.2 L59.3,18.8 L60.2,16.6 L61.2,16.3 L62.2,18.5 L63.2,14.5 L64.2,17.8 L65.2,19.5 L66.2,17.4 L67.2,16.3 L68.1,20.2 L69.1,19.6 L70.1,15.1 L71.1,17.7 L72.1,19.3 L73.1,19.0 L74.1,21.9 L75.1,21.4 L76.0,20.8 L77.0,19.3 L78.0,22.0 L79.0,20.3" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/.DJI-US" target="_blank">
+      <div class="info">
+        <span class="name">道琼斯</span>
+        <div class="price up">49,499.27</div>
+        <div class="change down">-152.87 <span class="sub2">-0.31%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,4.3 L2.0,3.6 L3.0,6.6 L4.0,2.0 L4.9,2.5 L5.9,8.4 L6.9,7.4 L7.9,4.5 L8.9,7.9 L9.9,8.7 L10.9,3.2 L11.9,6.0 L12.8,6.9 L13.8,4.9 L14.8,4.9 L15.8,9.5 L16.8,10.4 L17.8,8.2 L18.8,8.4 L19.8,8.3 L20.7,6.7 L21.7,7.3 L22.7,5.2 L23.7,11.8 L24.7,9.8 L25.7,10.4 L26.7,6.9 L27.7,11.5 L28.6,12.1 L29.6,10.5 L30.6,10.9 L31.6,12.1 L32.6,12.5 L33.6,7.9 L34.6,11.5 L35.6,8.7 L36.5,11.1 L37.5,14.9 L38.5,8.3 L39.5,9.7 L40.5,8.9 L41.5,9.4 L42.5,10.2 L43.5,15.3 L44.4,13.2 L45.4,15.3 L46.4,14.2 L47.4,16.8 L48.4,14.8 L49.4,10.6 L50.4,16.0 L51.4,12.5 L52.3,15.0 L53.3,15.4 L54.3,11.8 L55.3,11.7 L56.3,15.1 L57.3,14.1 L58.3,18.4 L59.3,17.5 L60.2,12.9 L61.2,15.9 L62.2,16.4 L63.2,15.1 L64.2,20.3 L65.2,16.7 L66.2,17.5 L67.2,15.2 L68.1,20.3 L69.1,14.8 L70.1,21.3 L71.1,20.7 L72.1,18.0 L73.1,17.6 L74.1,21.0 L75.1,22.0 L76.0,16.7 L77.0,21.5 L78.0,19.2 L79.0,20.1" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/futures/VXMAIN-US" target="_blank">
+      <div class="info">
+        <span class="name">VIX</span>
+        <div class="price" style="color:var(--red);">14.85</div>
+        <div class="change" style="color:var(--red);">+0.85 <span class="sub2">+6.07%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,20.7 L2.0,19.9 L3.0,20.1 L4.0,16.9 L4.9,22.0 L5.9,18.1 L6.9,21.3 L7.9,20.0 L8.9,17.8 L9.9,20.2 L10.9,19.9 L11.9,16.5 L12.8,21.3 L13.8,18.2 L14.8,14.1 L15.8,13.9 L16.8,20.4 L17.8,19.2 L18.8,18.6 L19.8,13.5 L20.7,13.7 L21.7,13.5 L22.7,17.0 L23.7,18.3 L24.7,13.2 L25.7,13.9 L26.7,14.4 L27.7,11.4 L28.6,13.6 L29.6,18.1 L30.6,12.0 L31.6,15.6 L32.6,12.7 L33.6,10.5 L34.6,16.1 L35.6,16.1 L36.5,15.9 L37.5,12.5 L38.5,14.3 L39.5,11.7 L40.5,10.6 L41.5,14.2 L42.5,10.8 L43.5,13.3 L44.4,11.4 L45.4,8.2 L46.4,8.4 L47.4,13.7 L48.4,11.1 L49.4,11.9 L50.4,13.7 L51.4,7.9 L52.3,8.7 L53.3,11.2 L54.3,7.5 L55.3,8.7 L56.3,9.3 L57.3,12.2 L58.3,11.5 L59.3,5.4 L60.2,5.0 L61.2,7.4 L62.2,5.1 L63.2,6.7 L64.2,9.7 L65.2,9.6 L66.2,8.1 L67.2,3.6 L68.1,4.1 L69.1,3.4 L70.1,3.0 L71.1,7.7 L72.1,7.2 L73.1,8.1 L74.1,3.0 L75.1,2.0 L76.0,5.3 L77.0,3.5 L78.0,6.7 L79.0,3.9" fill="none" stroke="#FF6900" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/000001-SH" target="_blank">
+      <div class="info">
+        <span class="name">上证指数</span>
+        <div class="price up">4,112.16</div>
+        <div class="change up">+4.64 <span class="sub2">+0.11%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,14.9 L2.0,15.4 L2.9,16.2 L3.9,16.4 L4.9,10.5 L5.8,4.9 L6.8,7.0 L7.7,11.2 L8.7,5.8 L9.7,5.4 L10.6,5.3 L11.6,8.9 L12.6,11.1 L13.5,11.7 L14.5,12.3 L15.4,11.8 L16.4,11.2 L17.4,17.8 L18.3,14.2 L19.3,12.6 L20.3,13.0 L21.2,17.4 L22.2,13.9 L23.1,13.3 L24.1,12.2 L25.1,15.4 L26.0,17.3 L27.0,18.9 L28.0,21.3 L28.9,18.6 L29.9,18.7 L30.9,18.2 L31.8,17.8 L32.8,18.0 L33.7,14.7 L34.7,15.8 L35.7,12.1 L36.6,16.2 L37.6,14.4 L38.6,12.0 L39.5,10.4 L40.5,12.6 L41.4,16.2 L42.4,17.9 L43.4,16.0 L44.3,16.9 L45.3,16.2 L46.3,16.4 L47.2,15.2 L48.2,17.7 L49.1,20.4 L50.1,21.4 L51.1,17.1 L52.0,15.5 L53.0,12.4 L54.0,10.2 L54.9,11.4 L55.9,11.9 L56.9,10.6 L57.8,7.8 L58.8,7.5 L59.7,6.4 L60.7,5.5 L61.7,4.1 L62.6,7.3 L63.6,7.6 L64.6,7.4 L65.5,7.8 L66.5,7.5 L67.4,9.4 L68.4,7.2 L69.4,4.2 L70.3,2.2 L71.3,5.2 L72.3,5.6 L73.2,6.8 L74.2,6.3 L75.1,7.4 L76.1,7.7 L77.1,8.4 L78.0,8.3 L79.0,9.1" fill="none" stroke="#00C853" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/399001-SZ" target="_blank">
+      <div class="info">
+        <span class="name">深证成指</span>
+        <div class="price down">15,107.55</div>
+        <div class="change down">-13.37 <span class="sub2">-0.09%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,5.1 L2.0,3.4 L2.9,6.6 L3.9,3.9 L4.9,3.2 L5.8,3.8 L6.8,7.6 L7.7,14.0 L8.7,9.3 L9.7,4.7 L10.6,3.5 L11.6,5.3 L12.6,12.5 L13.5,12.0 L14.5,14.3 L15.4,12.1 L16.4,14.5 L17.4,18.9 L18.3,15.6 L19.3,15.9 L20.3,15.0 L21.2,19.7 L22.2,16.7 L23.1,16.3 L24.1,14.1 L25.1,18.2 L26.0,18.2 L27.0,17.5 L28.0,18.4 L28.9,18.7 L29.9,19.5 L30.9,21.4 L31.8,20.0 L32.8,20.0 L33.7,16.9 L34.7,17.1 L35.7,15.1 L36.6,18.2 L37.6,16.7 L38.6,12.6 L39.5,12.2 L40.5,15.1 L41.4,16.8 L42.4,16.8 L43.4,15.0 L44.3,16.5 L45.3,15.3 L46.3,15.6 L47.2,12.9 L48.2,13.6 L49.1,16.0 L50.1,16.9 L51.1,14.3 L52.0,13.9 L53.0,12.7 L54.0,12.0 L54.9,13.8 L55.9,14.1 L56.9,15.2 L57.8,13.7 L58.8,13.7 L59.7,13.2 L60.7,12.0 L61.7,11.2 L62.6,13.5 L63.6,13.8 L64.6,13.9 L65.5,13.2 L66.5,12.2 L67.4,12.5 L68.4,10.5 L69.4,8.0 L70.3,6.5 L71.3,8.7 L72.3,9.8 L73.2,10.6 L74.2,10.3 L75.1,11.3 L76.1,11.6 L77.1,12.4 L78.0,12.5 L79.0,12.7" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/399006-SZ" target="_blank">
+      <div class="info">
+        <span class="name">创业板指</span>
+        <div class="price down">3,677.15</div>
+        <div class="change down">-10.02 <span class="sub2">-0.27%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,6.6 L2.0,2.0 L2.9,7.7 L3.9,5.4 L4.9,7.2 L5.8,8.5 L6.8,11.6 L7.7,17.8 L8.7,13.4 L9.7,10.7 L10.6,8.5 L11.6,8.8 L12.6,14.7 L13.5,14.2 L14.5,16.7 L15.4,13.5 L16.4,16.0 L17.4,18.1 L18.3,15.4 L19.3,16.2 L20.3,15.7 L21.2,18.9 L22.2,17.4 L23.1,17.0 L24.1,15.2 L25.1,18.9 L26.0,18.7 L27.0,18.2 L28.0,18.7 L28.9,19.8 L29.9,20.4 L30.9,21.8 L31.8,20.7 L32.8,20.1 L33.7,18.1 L34.7,17.6 L35.7,15.7 L36.6,18.0 L37.6,17.3 L38.6,14.2 L39.5,14.4 L40.5,16.2 L41.4,17.3 L42.4,16.5 L43.4,15.4 L44.3,16.7 L45.3,16.0 L46.3,16.0 L47.2,13.6 L48.2,14.8 L49.1,16.3 L50.1,16.7 L51.1,15.2 L52.0,14.9 L53.0,13.9 L54.0,13.4 L54.9,14.4 L55.9,14.9 L56.9,16.3 L57.8,15.8 L58.8,16.0 L59.7,15.9 L60.7,15.1 L61.7,14.1 L62.6,15.3 L63.6,15.2 L64.6,15.5 L65.5,15.0 L66.5,14.3 L67.4,14.5 L68.4,12.9 L69.4,11.5 L70.3,10.5 L71.3,12.1 L72.3,13.3 L73.2,14.1 L74.2,14.1 L75.1,14.9 L76.1,15.5 L77.1,16.1 L78.0,16.2 L79.0,16.3" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+    <a class="idx-card" href="https://www.futunn.com/index/800700-HK" target="_blank">
+      <div class="info">
+        <span class="name">恒生科技</span>
+        <div class="price up">6,934.50</div>
+        <div class="change up">+125.80 <span class="sub2">+1.85%</span></div>
+      </div>
+      <div class="chart"><svg class="spark"  viewBox="0 -4 80 32">
+                <path d="M1.0,10.5 L2.0,8.2 L3.0,11.5 L4.0,9.3 L5.0,6.5 L6.0,7.2 L7.0,5.1 L8.0,4.3 L9.0,6.8 L10.0,5.5 L11.0,8.0 L12.0,9.5 L13.0,7.8 L14.0,10.2 L15.0,8.5 L16.0,11.0 L17.0,9.5 L18.0,7.0 L19.0,5.5 L20.0,6.8 L21.0,4.2 L22.0,3.8 L23.0,2.5 L24.0,4.0 L25.0,3.0 L26.0,1.5 L27.0,0.8 L28.0,3.2 L29.0,5.0 L30.0,4.5 L31.0,6.0 L32.0,7.5 L33.0,9.0 L34.0,10.5 L35.0,8.0 L36.0,6.5 L37.0,7.0 L38.0,5.8 L39.0,4.2 L40.0,3.0 L41.0,1.8 L42.0,0.5 L43.0,2.0 L44.0,3.5 L45.0,5.0 L46.0,4.0 L47.0,6.5 L48.0,8.0 L49.0,9.5 L50.0,10.0 L51.0,8.5 L52.0,7.0 L53.0,5.5 L54.0,4.0 L55.0,2.5 L56.0,1.0 L57.0,2.2 L58.0,4.0 L59.0,5.8 L60.0,7.5 L61.0,9.2 L62.0,10.8 L63.0,12.0 L64.0,13.5 L65.0,15.0 L66.0,16.5 L67.0,18.0 L68.0,19.2 L69.0,20.5 L70.0,22.0 L71.0,23.0 L72.0,24.5 L73.0,23.0 L74.0,21.5 L75.0,22.0 L76.0,20.5 L77.0,19.0 L78.0,20.0 L79.0,21.0" fill="none" stroke="#FF4060" stroke-width="1.8" stroke-linecap="round"/>
+              </svg></div>
+    </a>
+  </div>
+
+  <!-- STANCE -->
+  <div class="stance-bar">
+    <div class="stance-item">
+      <div class="info"><div class="lbl">A股立场</div><div class="val" style="color:var(--orange);">持币观望 0%</div></div>
+      <div class="mbar"><div class="fill" style="width:45%;background:var(--orange);"></div></div>
+    </div>
+    <div class="stance-item">
+      <div class="info"><div class="lbl">美股立场</div><div class="val" style="color:var(--green);">保守空头 30%</div></div>
+      <div class="mbar"><div class="fill" style="width:72%;background:var(--green);"></div></div>
+    </div>
+  </div>
+
+  <!-- INSIGHT -->
+  <div class="insight">
+    <span class="label">核心观点</span>
+    <span>隔夜美股收跌（标普 -0.68%、纳指-0.81%），VIX回升至14.85。A股缩量收官迎五一。本周焦点：5/6 A股复盘、5/7美联储决议、5/8非农。</span>
+  </div>
+
+  <!-- ===== TIER 1 ===== -->
+  <div class="sec-label">
+    <span class="dot-tier">&nbsp;</span>
+    <span>🔥 高位动量 · 主升突破</span>
+    <span class="right"><span class="tier-sub tier-sub-h">趋势延续</span></span>
+  </div>
+  <div class="table-wrap">
+    <div class="tb-scroll">
+    <div class="table-hd">
+      <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
+      <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
+      <span class="col-vol">成交量</span><span class="col-amt">成交额</span><span class="col-cap">总市值</span><span class="col-tag"></span>
+    </div>
+
+    <a class="tbl-row" href="https://www.futunn.com/stock/NVDA-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">1</span>
+      <span class="s-sym col-sym">NVDA</span>
+      <span class="s-name col-name">英伟达</span>
+      <span class="s-last col-last up">924.50</span>
+      <span class="col-chg up">+28.75</span>
+      <span class="col-chgp up">+3.21%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">4225万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">385.2亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">2.31万亿</span>
+      <span class="col-tag"><span class="tb-tag tb-high">新高突破</span></span>
+    </a>
+    <a class="tbl-row" href="https://www.futunn.com/stock/PLTR-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">2</span>
+      <span class="s-sym col-sym">PLTR</span>
+      <span class="s-name col-name">Palantir</span>
+      <span class="s-last col-last up">186.30</span>
+      <span class="col-chg up">+10.25</span>
+      <span class="col-chgp up">+5.82%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">2261万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">42.1亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">4140亿</span>
+      <span class="col-tag"><span class="tb-tag tb-high">业绩催化</span></span>
+    </a>
+    <a class="tbl-row" href="https://www.futunn.com/stock/AMD-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">3</span>
+      <span class="s-sym col-sym">AMD</span>
+      <span class="s-name col-name">超微</span>
+      <span class="s-last col-last down">158.20</span>
+      <span class="col-chg down">-1.79</span>
+      <span class="col-chgp down">-1.12%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">1807万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">28.6亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">2560亿</span>
+      <span class="col-tag"><span class="tb-tag" style="color:var(--dim);font-weight:400;">回调低吸</span></span>
+    </a>
+  
+  </div></div>
+
+  <!-- ===== TIER 2 ===== -->
+  <div class="sec-label">
+    <span class="dot-tier">&nbsp;</span>
+    <span>📊 中位动量 · 量价配合</span>
+    <span class="right"><span class="tier-sub tier-sub-m">低位启动</span></span>
+  </div>
+  <div class="table-wrap">
+    <div class="tb-scroll">
+    <div class="table-hd">
+      <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
+      <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
+      <span class="col-vol">成交量</span><span class="col-amt">成交额</span><span class="col-cap">总市值</span><span class="col-tag"></span>
+    </div>
+    <a class="tbl-row" href="https://www.futunn.com/stock/TSLA-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">1</span>
+      <span class="s-sym col-sym">TSLA</span>
+      <span class="s-name col-name">特斯拉</span>
+      <span class="s-last col-last up">178.60</span>
+      <span class="col-chg up">+3.71</span>
+      <span class="col-chgp up">+2.12%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">1.04亿</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">186.5亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">5690亿</span>
+      <span class="col-tag"><span class="tb-tag tb-mid">FSD催化</span></span>
+    </a>
+    <a class="tbl-row" href="https://www.futunn.com/stock/META-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">2</span>
+      <span class="s-sym col-sym">META</span>
+      <span class="s-name col-name">Meta</span>
+      <span class="s-last col-last up">512.40</span>
+      <span class="col-chg up">+7.53</span>
+      <span class="col-chgp up">+1.48%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">1800万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">92.3亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">1.29万亿</span>
+      <span class="col-tag"><span class="tb-tag tb-mid">AI广告</span></span>
+    </a>
+  
+  </div></div>
+
+  <!-- ===== TIER 3 ===== -->
+  <div class="sec-label">
+    <span class="dot-tier">&nbsp;</span>
+    <span>🌱 低位价值 · 潜在催化</span>
+    <span class="right"><span class="tier-sub tier-sub-l">等待催化</span></span>
+  </div>
+  <div class="table-wrap">
+    <div class="tb-scroll">
+    <div class="table-hd">
+      <span class="col-seq">#</span><span class="col-sym">代码</span><span class="col-name">名称</span>
+      <span class="col-last">最新价</span><span class="col-chg">涨跌额</span><span class="col-chgp">涨跌幅</span>
+      <span class="col-vol">成交量</span><span class="col-amt">成交额</span><span class="col-cap">总市值</span><span class="col-tag"></span>
+    </div>
+    <a class="tbl-row" href="https://www.futunn.com/stock/INTC-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">1</span>
+      <span class="s-sym col-sym">INTC</span>
+      <span class="s-name col-name">英特尔</span>
+      <span class="s-last col-last" style="color:var(--orange);">42.80</span>
+      <span class="col-chg" style="color:var(--orange);">+0.14</span>
+      <span class="col-chgp" style="color:var(--orange);">+0.32%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">3690万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">15.8亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">1780亿</span>
+      <span class="col-tag"><span class="tb-tag tb-low">底部放量</span></span>
+    </a>
+    <a class="tbl-row" href="https://www.futunn.com/stock/BA-US" target="_blank">
+      <span class="col-seq" style="color:var(--dim);">2</span>
+      <span class="s-sym col-sym">BA</span>
+      <span class="s-name col-name">波音</span>
+      <span class="s-last col-last up">186.50</span>
+      <span class="col-chg up">+7.48</span>
+      <span class="col-chgp up">+4.18%</span>
+      <span class="col-vol" style="color:var(--dim);font-size:11px;">1749万</span>
+      <span class="col-amt" style="color:var(--dim);font-size:11px;">32.6亿</span>
+      <span class="col-cap" style="color:var(--dim);font-size:11px;">1120亿</span>
+      <span class="col-tag"><span class="tb-tag tb-low">订单催化</span></span>
+    </a>
+  
+  </div></div>
+
+  <!-- ===== COMMODITY & FX ===== -->
+  <div class="sec-label">
+    <span class="dot-tier">&nbsp;</span>
+    <span>💎 黄金 · 原油 · 美元</span>
+  </div>
+  <div class="cfx-grid">
+    <a class="cfx-item" href="https://www.futunn.com/currency/XAUUSD-FX" target="_blank" style="text-decoration:none;color:var(--text);">
+      <div class="l">XAU/USD</div>
+      <div class="p up">2,348.60</div>
+      <div class="c up">+12.30 <span style="color:var(--dim);font-weight:400;font-size:10px;">+0.53%</span></div>
+    </a>
+    <a class="cfx-item" href="https://www.futunn.com/futures/CLMAIN-US" target="_blank" style="text-decoration:none;color:var(--text);">
+      <div class="l">WTI 原油</div>
+      <div class="p up">79.85</div>
+      <div class="c up">+0.64 <span style="color:var(--dim);font-weight:400;font-size:10px;">+0.81%</span></div>
+    </a>
+    <a class="cfx-item" href="https://www.futunn.com/futures/BZMAIN-US" target="_blank" style="text-decoration:none;color:var(--text);">
+      <div class="l">布伦特</div>
+      <div class="p up">84.22</div>
+      <div class="c up">+0.53 <span style="color:var(--dim);font-weight:400;font-size:10px;">+0.63%</span></div>
+    </a>
+    <a class="cfx-item" href="https://www.futunn.com/currency/USDCNH-FX" target="_blank" style="text-decoration:none;color:var(--text);">
+      <div class="l">USD/CNY</div>
+      <div class="p up">7.2410</div>
+      <div class="c up">+0.0015 <span style="color:var(--dim);font-weight:400;font-size:10px;">+0.02%</span></div>
+    </a>
+  </div>
+
+  <!-- ANALYSIS -->
+  <div class="analysis">
+    <div class="a-label">📊 商品与汇率分析</div>
+    <div class="a-body">
+      <strong><a href="https://www.futunn.com/currency/XAUUSD-FX" target="_blank" style="color:var(--text);text-decoration:none;">黄金</a></strong>：实时价见上方商品卡。金价维持历史高位，地缘溢价+央行购金双支撑，关注本周 Fed 决议指引。<br>
+      <strong>原油</strong>：实时价见上方商品卡。WTI/Brent 高位运行，霍尔木兹海峡形势升级带来持续地缘溢价。<br>
+      <strong>美元/人民币</strong>：实时价见上方商品卡。人民币汇率短期稳定，跨境资金无异常。<br>
+      <strong>VIX</strong>：实时值见上方指数卡。当前处于中位区间，市场对 Fed+非农保持警惕。
+    </div>
+  </div>
+
+  <!-- ===== RISK ===== -->
+  <div class="sec-label">
+    <span>⚠️ 关键风险提示</span>
+  </div>
+  <ul class="risk-list">
+    <li class="risk-item">
+      <div class="r-dot"></div>
+      <div class="r-text"><strong>美联储利率决议（5/7）</strong> — 若意外释放鹰派信号，可能引发美股回调。重点关注鲍威尔讲话基调。</div>
+    </li>
+    <li class="risk-item">
+      <div class="r-dot"></div>
+      <div class="r-text"><strong>A股节后复盘（5/6）</strong> — 五一消费数据能否兑现预期，北向资金节后流向需关注。若假期消费不及预期，旅游/零售板块或承压。</div>
+    </li>
+    <li class="risk-item">
+      <div class="r-dot"></div>
+      <div class="r-text"><strong>非农就业数据（5/8）</strong> — 劳动力市场数据将直接影响美联储政策路径预期。若就业超预期，降息预期将进一步推迟。</div>
+    </li>
+  </ul>
+
+  <!-- ===== EVENTS ===== -->
+  <div class="sec-label">
+    <span>📅 本周经济日历</span>
+    <span class="right">中国时区</span>
+  </div>
+  <div class="events">
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件1</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件2</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件3</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件4</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件5</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件6</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件7</div></div>
+    <div class="ev-item"><div class="d">MM.DD 周X</div><div class="e">事件8</div></div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span style="font-family:'Verdana',sans-serif;font-weight:700;font-size:12px;">每日动量报告 BY MARCUS</span>
+    <span><a href="https://instabio.cc/LIMITSTUDIO" target="_blank">THELIMIT STUDIO</a></span>
+  </div>
+
+</div>
+</body>
+</html>

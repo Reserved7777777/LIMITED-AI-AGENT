@@ -15,3 +15,5 @@ futunn_default_sources.txt
 *.csv
 *.xlsx
 avatar.jpg
+healthcheck.log
+/tmp/healthcheck.log

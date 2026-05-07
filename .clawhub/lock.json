@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "skills": {
+    "openclaw-tavily-search": {
+      "version": "0.1.0",
+      "installedAt": 1776916473372
+    },
+    "memory-hygiene": {
+      "version": "1.0.0",
+      "installedAt": 1776916475194
+    },
+    "github": {
+      "version": "1.0.0",
+      "installedAt": 1776916476864
+    },
+    "agent-browser-clawdbot": {
+      "version": "0.1.0",
+      "installedAt": 1776916478587
+    },
+    "tencentcloud-lighthouse-skill": {
+      "version": "1.0.0",
+      "installedAt": 1776916480986
+    },
+    "tencent-docs": {
+      "version": "1.0.29",
+      "installedAt": 1776916486444
+    },
+    "tencent-cos-skill": {
+      "version": "1.1.7",
+      "installedAt": 1776916489396
+    },
+    "tencent-meeting-skill": {
+      "version": "1.0.5",
+      "installedAt": 1776916492044
+    },
+    "web-tools-guide": {
+      "version": "1.0.2",
+      "installedAt": 1776916494673
+    },
+    "travelassistant": {
+      "version": "1.0.0",
+      "installedAt": 1777778577601
+    },
+    "amap-lbs-skill": {
+      "version": "2.0.1",
+      "installedAt": 1777778578991
+    },
+    "travel-planner-pro": {
+      "version": "1.0.0",
+      "installedAt": 1777778580309
+    },
+    "claude-code": {
+      "version": "1.0.0",
+      "installedAt": 1777778581587
+    },
+    "answeroverflow": {
+      "version": "1.0.2",
+      "installedAt": 1777778582835
+    },
+    "office-automation-pro": {
+      "version": "1.0.0",
+      "installedAt": 1777778584079
+    },
+    "pdf-toolkit-pro": {
+      "version": "1.0.0",
+      "installedAt": 1777778585431
+    },
+    "academic-pre-review-committee": {
+      "version": "1.0.0",
+      "installedAt": 1777778586813
+    },
+    "arxiv-watcher": {
+      "version": "1.0.0",
+      "installedAt": 1777778588209
+    },
+    "literature-review": {
+      "version": "1.2.0",
+      "installedAt": 1777778589634
+    },
+    "stock-price-query": {
+      "version": "1.2.1",
+      "installedAt": 1777778590915
+    },
+    "stock-board": {
+      "version": "1.0.0",
+      "installedAt": 1777778592179
+    }
+  }
+}

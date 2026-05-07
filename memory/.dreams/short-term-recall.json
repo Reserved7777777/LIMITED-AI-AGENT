@@ -1,0 +1,290 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-07T02:10:31.986Z",
+  "entries": {
+    "memory:memory/2026-04-27.md:1:23": {
+      "key": "memory:memory/2026-04-27.md:1:23",
+      "path": "memory/2026-04-27.md",
+      "startLine": 1,
+      "endLine": 23,
+      "source": "memory",
+      "snippet": "# 2026-04-27 日志 ## STOCK-REPORT 故障记录 ### A股微信版超时（2026-04-27 08:30） - **症状**: 微信端没收到报告，QQ端正常 - **根因**: cron job `timeoutSeconds: 300` 刚好卡在边界超时(300029ms)，模型生成+微信渠道投递耗时超过5分钟限制 - **修正**: 所有4个cron任务的timeoutSeconds从300→600 - **prompt优化**: 统一在prompt中注入今日日期，减少模型额外查询日期的时间 - **教训**: 推理模型(depseek-reasoner)生成时间较长，cron任务timeout应该给足余量；双渠道任务不要用相同timeout，要考虑投递渠道的额外延迟 ### 今日配置修改 1. DeepSeek 缓存优化（supportsPromptCacheKey, cacheRetention, contextPruning, contextInjection） 2. heartbeat 40m 缓存保活 + includeSystemPromptSection=false 3. timeoutSeconds 全局 600s ## 微信群聊推送测试（2026-04-27 22:30-23:30） - **目标**: 将STOCK-REPORT推送到微信群 `50375299855@chatroom` - **过程**: 1. 登录第二个ilink账号 `c8cef65fc5c1-im-bot`（userId: o9cq80wU6S",
+      "recallCount": 3,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 3,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-04-30T13:07:05.716Z",
+      "lastRecalledAt": "2026-05-01T01:09:16.601Z",
+      "queryHashes": [
+        "be994a6c94df",
+        "27b7266d8eca",
+        "bd2682d31858"
+      ],
+      "recallDays": [
+        "2026-04-30",
+        "2026-05-01"
+      ],
+      "conceptTags": [
+        "stock-report",
+        "depseek-reasoner",
+        "30-23",
+        "将stock-report推送到微信群",
+        "c8cef65fc5c1-im-bot",
+        "日志",
+        "stock",
+        "report"
+      ]
+    },
+    "memory:memory/2026-04-27.md:32:43": {
+      "key": "memory:memory/2026-04-27.md:32:43",
+      "path": "memory/2026-04-27.md",
+      "startLine": 32,
+      "endLine": 43,
+      "source": "memory",
+      "snippet": "2. 企业微信群机器人 webhook - **账号现状**: - `e893a875fd39-im-bot`（userId: o9cq808orXco7Hl2kHALBWtDJK9I）→ 旧手机新微信，能收 bot 消息但用户不用了 - `c8cef65fc5c1-im-bot`（userId: o9cq80wU6SzOk5Ksdmmg1rAN5hMg）→ 当前手机旧微信8.0.29，看不到 bot 联系人 - **结论**: ilink 群聊不可行，回退个人微信推送。两个账号分别绑在不同手机，当前使用手机微信版本过旧无法显示bot ## Marcus/STOCK-REPORT 修改记录 - 三级观察名单上线（高位10+中位10+低位10），5%定义为单日收益目标 - 层级判定规则改为：股价位置 × 动量强度 × 催化状态 三维判断，动量权重 > 股价权重 - 指令文件去重精炼，合并三层独立格式模板为通用格式 - 新增规则7：每次Marcus修改后自动去重精炼",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.8283273807193131,
+      "maxScore": 0.8283273807193131,
+      "firstRecalledAt": "2026-05-01T01:08:12.341Z",
+      "lastRecalledAt": "2026-05-01T01:08:12.341Z",
+      "queryHashes": [
+        "27b7266d8eca"
+      ],
+      "recallDays": [
+        "2026-05-01"
+      ],
+      "conceptTags": [
+        "e893a875fd39-im-bot",
+        "c8cef65fc5c1-im-bot",
+        "当前手机旧微信8.0.29",
+        "marcus/stock-report",
+        "企业",
+        "机器",
+        "webhook",
+        "现状"
+      ]
+    },
+    "memory:memory/2026-05-03.md:1:24": {
+      "key": "memory:memory/2026-05-03.md:1:24",
+      "path": "memory/2026-05-03.md",
+      "startLine": 1,
+      "endLine": 24,
+      "source": "memory",
+      "snippet": "# 2026-05-03 ## 微信通道验证 - 旧账号 `c8cef65fc5c1` 清理（sync.json 已删除） - 新账号 `4f117b00d3e2-im-bot` 双向通信测试通过 - 用户先在微信发\"测试\"消息 → 插件 06:58 收到 → 自动回复成功投递 - 绑定关系：openclaw-weixin → jiayi 角色（通过 routes 配置） ## Karpathy 编码原则注入 - 从 Karpathy 的 GitHub 找到 `.claude/skills/read-arxiv-paper/SKILL.md`（nanochat 仓库） - 用户提供 Karpathy 的实际 CLAUDE.md 原文（4条核心原则） - 整合写入 AGENTS.md：4主原则+5前置约束 - MEMORY.md 已记录变更 ## WeChat 贵州旅游报价（09:22~09:29） - 用户微信发来6天行程：贵阳接→黄果树(往返住贵阳)→大小七孔(住荔波)→西江(顺路住西江)→乌江寨(顺路住乌江寨)→贵阳送 - 参数：20人·38座·6正餐30元/正·门票含景交/不含乌江寨·导服300/天·司陪120/晚(贵阳除外)·操作费20/人 - 路由异常：消息落入 main 会话而非 jiayi agent - 回复失败：AbortError（iLink API 15秒超时中断，消息2051字） - 修复报价发送：拆4段发出，人均1,446~1,471元 ## 微信发送故障修复 - 根因：`DEFAULT_API_TIMEOUT_MS = 15_000`（15秒",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-04T02:10:47.156Z",
+      "lastRecalledAt": "2026-05-04T02:10:47.156Z",
+      "queryHashes": [
+        "35da89fbf25c"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "sync.json",
+        "4f117b00d3e2-im-bot",
+        "openclaw-weixin",
+        "claude.md",
+        "agents.md",
+        "memory.md",
+        "6正餐30元/正",
+        "门票含景交/不含乌江寨"
+      ]
+    },
+    "memory:memory/2026-05-03.md:45:61": {
+      "key": "memory:memory/2026-05-03.md:45:61",
+      "path": "memory/2026-05-03.md",
+      "startLine": 45,
+      "endLine": 61,
+      "source": "memory",
+      "snippet": "- AGENTS-DINGCLAW.md：工作流 + 触发方式 + 特殊流程 - route：ddingtalk → dingclaw agent - 调用方式：钉钉群 @DINGCLAW 或 /快捷命令 ### 学术锻造者（ForgeMaster，论文对抗） - IDENTITY-学术锻造者.md：4条底线（存疑本能、结构强迫、贫瘠诚实、版本暴政） - SOUL-学术锻造者.md：灵魂三欲（撕裂模糊、憎恨装饰、可迁移冲突）+ 情绪机制 - AGENTS-学术锻造者.md：五步强制流程 + 7技能模块 + 扩展协议 - 技能：反事实重构/方法脱衣舞/引文埋雷/数据羞耻/段落瘦身/审稿人预测/平庸探测器 - 触发：手动切换，`@学术锻造者 + 主题 + 痛点 + 技能` ## 配置变更 - MEMORY.md 新增角色系统表（4角色+绑定通道） - openclaw.json 新增 dingclaw agent + route binding - HEARTBEAT.md 无变更（template only） - SOUL.md / AGENTS.md 主文件无变更",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6335099337513855,
+      "maxScore": 0.6335099337513855,
+      "firstRecalledAt": "2026-05-04T02:10:47.156Z",
+      "lastRecalledAt": "2026-05-04T02:10:47.156Z",
+      "queryHashes": [
+        "35da89fbf25c"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "agents-dingclaw.md",
+        "identity-学术锻造者.md",
+        "soul-学术锻造者.md",
+        "agents-学术锻造者.md",
+        "memory.md",
+        "openclaw.json",
+        "heartbeat.md",
+        "soul.md"
+      ]
+    },
+    "memory:memory/2026-05-03.md:19:50": {
+      "key": "memory:memory/2026-05-03.md:19:50",
+      "path": "memory/2026-05-03.md",
+      "startLine": 19,
+      "endLine": 50,
+      "source": "memory",
+      "snippet": "- 回复失败：AbortError（iLink API 15秒超时中断，消息2051字） - 修复报价发送：拆4段发出，人均1,446~1,471元 ## 微信发送故障修复 - 根因：`DEFAULT_API_TIMEOUT_MS = 15_000`（15秒），长消息超时被 AbortController 中断 - 修复：15s→60s + LONG_POLL 35s→60s（文件 `extensions/openclaw-weixin/src/api/api.ts`） - 路由修复：jiayi agentDir 路径错误 `/agents/jiayi/agent`（不存在）→ 修正为 `/agents/jiayi` - 网关重启生效 - 验证：多段消息成功送达，无超时 ## 钉钉通道验证 - 插件已加载，配置正常（clientId + clientSecret） - 10:32 收到单聊消息，自动回复成功 - 11:07 添加 route binding：ddingtalk → dingclaw ## 新身份创建 ### LIMITED（赛博格编程助理） - IDENTITY-LIMITED.md：4条 Karpathy 编程信条 - AGENTS-LIMITED.md：代码审查SOP + 禁止清单 - SOUL-LIMITED.md：极度精炼冷感 + 称呼\"Commander\" - 触发方式：手动切换 ### DINGCLAW（钉钉办公助理） - IDENTITY-DINGCLAW.md：OA审批/Excel/PPT/Word专注领域 - SOUL-DINGCLA",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.632084282607125,
+      "maxScore": 0.632084282607125,
+      "firstRecalledAt": "2026-05-04T02:10:47.156Z",
+      "lastRecalledAt": "2026-05-04T02:10:47.156Z",
+      "queryHashes": [
+        "35da89fbf25c"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "网关",
+        "default-api-timeout-ms",
+        "15-000",
+        "long-poll",
+        "agents/jiayi/agent",
+        "agents/jiayi",
+        "identity-limited.md",
+        "agents-limited.md"
+      ]
+    },
+    "memory:memory/2026-05-03.md:59:87": {
+      "key": "memory:memory/2026-05-03.md:59:87",
+      "path": "memory/2026-05-03.md",
+      "startLine": 59,
+      "endLine": 87,
+      "source": "memory",
+      "snippet": "- 插件已加载，配置正常（clientId + clientSecret） - 10:32 收到单聊消息，自动回复成功 - 11:07 添加 route binding：ddingtalk → dingclaw ## 新身份创建 ### LIMITED（赛博格编程助理） - IDENTITY-LIMITED.md：4条 Karpathy 编程信条 - AGENTS-LIMITED.md：代码审查SOP + 禁止清单 - SOUL-LIMITED.md：极度精炼冷感 + 称呼\"Commander\" - 触发方式：手动切换 ### DINGCLAW（钉钉办公助理） - IDENTITY-DINGCLAW.md：OA审批/Excel/PPT/Word专注领域 - SOUL-DINGCLAW.md：工作风格 + 核心职责 - AGENTS-DINGCLAW.md：工作流 + 触发方式 + 特殊流程 - route：ddingtalk → dingclaw agent - 调用方式：钉钉群 @DINGCLAW 或 /快捷命令 ### 学术锻造者（ForgeMaster，论文对抗） - IDENTITY-学术锻造者.md：4条底线（存疑本能、结构强迫、贫瘠诚实、版本暴政） - SOUL-学术锻造者.md：灵魂三欲（撕裂模糊、憎恨装饰、可迁移冲突）+ 情绪机制 - AGENTS-学术锻造者.md：五步强制流程 + 7技能模块 + 扩展协议 - 技能：反事实重构/方法脱衣舞/引文埋雷/数据羞耻/段落瘦身/审稿人预测/平庸探测器 - 触发：手动切换，`@学术锻造者 + 主题 + 痛点 +",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-05T08:16:50.200Z",
+      "lastRecalledAt": "2026-05-05T08:16:50.200Z",
+      "queryHashes": [
+        "b95c2b0d1786"
+      ],
+      "recallDays": [
+        "2026-05-05"
+      ],
+      "conceptTags": [
+        "identity-limited.md",
+        "agents-limited.md",
+        "soul-limited.md",
+        "identity-dingclaw.md",
+        "oa审批/excel/ppt/word专注领域",
+        "soul-dingclaw.md",
+        "agents-dingclaw.md",
+        "identity-学术锻造者.md"
+      ]
+    },
+    "memory:memory/2026-05-03.md:103:132": {
+      "key": "memory:memory/2026-05-03.md:103:132",
+      "path": "memory/2026-05-03.md",
+      "startLine": 103,
+      "endLine": 132,
+      "source": "memory",
+      "snippet": "3. 如在线但仍掉 → 重启 iLink 客户端 4. 仍不行 → 切手机网络（Wi-Fi ↔ 移动数据） **保护状态（此时生效中）：** - 💡 控制台地址：http://1.14.93.56:31222/7ce8fe15ad775ae9f2d04bce → 配了 TLS 但未验证通过 - 🔒 管理口令：895810c0db1439ba - 🔒 通道 agent 保护：JOY(微信) / DINGCLAW(钉钉) 已禁止 write/edit/apply_patch/exec - 📱 WeChat 通道当前不可用（iLink 心跳断连） **微信通道恢复（18:44）：** 用户重新连接 iLink 客户端后，微信通信已恢复正常。 ## Agent 全大寫更名 (18:48~) - jiayi → JOY (agent ID/name/dir/workspace/identity 全部同步) - dingclaw → DINGCLAW (agent ID) - main → MAIN (display name only; internal ID 保留 main) - 文件操作：`mv agents/jiayi/ agents/JOY/`, `mv workspace-jiayi/ workspace-JOY/`, `mv IDENTITY-佳逸.md IDENTITY-JOY.md` - openclaw.json 同步更新：agent IDs, routes, agentDir, workspace - MEMORY.md / SOUL.md / TOO",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 2,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-05T08:16:50.200Z",
+      "lastRecalledAt": "2026-05-07T02:10:31.986Z",
+      "queryHashes": [
+        "b95c2b0d1786",
+        "069ee9904cd1"
+      ],
+      "recallDays": [
+        "2026-05-05",
+        "2026-05-07"
+      ],
+      "conceptTags": [
+        "网络",
+        "wi-fi",
+        "1.14.93.56",
+        "31222/7ce8fe15ad775ae9f2d04bce",
+        "write/edit/apply-patch/exec",
+        "id/name/dir/workspace/identity",
+        "agents/jiayi",
+        "agents/joy"
+      ]
+    },
+    "memory:memory/2026-05-03.md:41:67": {
+      "key": "memory:memory/2026-05-03.md:41:67",
+      "path": "memory/2026-05-03.md",
+      "startLine": 41,
+      "endLine": 67,
+      "source": "memory",
+      "snippet": "- 整合写入 AGENTS.md：4主原则+5前置约束 - MEMORY.md 已记录变更 ## WeChat 贵州旅游报价（09:22~09:29） - 用户微信发来6天行程：贵阳接→黄果树(往返住贵阳)→大小七孔(住荔波)→西江(顺路住西江)→乌江寨(顺路住乌江寨)→贵阳送 - 参数：20人·38座·6正餐30元/正·门票含景交/不含乌江寨·导服300/天·司陪120/晚(贵阳除外)·操作费20/人 - 路由异常：消息落入 main 会话而非 MAIN agent - 回复失败：AbortError（iLink API 15秒超时中断，消息2051字） - 修复报价发送：拆4段发出，人均1,446~1,471元 ## 微信发送故障修复 - 根因：`DEFAULT_API_TIMEOUT_MS = 15_000`（15秒），长消息超时被 AbortController 中断 - 修复：15s→60s + LONG_POLL 35s→60s（文件 `extensions/openclaw-weixin/src/api/api.ts`） - 路由修复：MAIN agentDir 路径错误 `/agents/jiayi/agent`（不存在）→ 修正为 `/agents/jiayi` - 网关重启生效 - 验证：多段消息成功送达，无超时 ## 钉钉通道验证 - 插件已加载，配置正常（clientId + clientSecret） - 10:32 收到单聊消息，自动回复成功 - 11:07 添加 route binding：ddingtalk → dingclaw ## 新",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-05T08:16:50.200Z",
+      "lastRecalledAt": "2026-05-05T08:16:50.200Z",
+      "queryHashes": [
+        "b95c2b0d1786"
+      ],
+      "recallDays": [
+        "2026-05-05"
+      ],
+      "conceptTags": [
+        "网关",
+        "agents.md",
+        "memory.md",
+        "6正餐30元/正",
+        "门票含景交/不含乌江寨",
+        "导服300/天",
+        "司陪120/晚",
+        "操作费20/人"
+      ]
+    },
+    "memory:memory/2026-05-03.md:82:108": {
+      "key": "memory:memory/2026-05-03.md:82:108",
+      "path": "memory/2026-05-03.md",
+      "startLine": 82,
+      "endLine": 108,
+      "source": "memory",
+      "snippet": "- 技能：反事实重构/方法脱衣舞/引文埋雷/数据羞耻/段落瘦身/审稿人预测/平庸探测器 - 触发：手动切换，`@学术锻造者 + 主题 + 痛点 + 技能` ## 配置变更 - MEMORY.md 新增角色系统表（4角色+绑定通道） - openclaw.json 新增 dingclaw agent + route binding - HEARTBEAT.md 无变更（template only） - SOUL.md / AGENTS.md 主文件无变更 ## 微信 iLink 心跳超时故障（18:39~18:43） **现象：** 18:37 Gateway 重启后，WeChat monitor 启动成功，但 18:39 连续两次 `TERMINATE SOCKET: Ping Pong does not transfer heartbeat`。此后自动重连 4 次均失败，最后一次重连记录 18:43。 **根因分析：** - 服务端到 ilinkai.weixin.qq.com 的 HTTP 连通性正常（返回 405 属于预期） - WebSocket 长连接 ping/pong 保活失败 — 服务端发了 ping，手机端未回 pong - 大概率是手机上 iLink 客户端断线了（退出登录 / 网络断 / app 被杀后台） **排查/修复：** 1. 检查手机「龙虾 iLink」或 iLink bot 是否在线 2. 如已退出 → 重新扫码登录 3. 如在线但仍掉 → 重启 iLink 客户端 4. 仍不行 → 切手机网络（Wi-Fi ↔ 移动数据） **保",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-05T08:16:50.200Z",
+      "lastRecalledAt": "2026-05-05T08:16:50.200Z",
+      "queryHashes": [
+        "b95c2b0d1786"
+      ],
+      "recallDays": [
+        "2026-05-05"
+      ],
+      "conceptTags": [
+        "gateway",
+        "网络",
+        "memory.md",
+        "openclaw.json",
+        "heartbeat.md",
+        "soul.md",
+        "agents.md",
+        "ilinkai.weixin.qq.com"
+      ]
+    }
+  }
+}
