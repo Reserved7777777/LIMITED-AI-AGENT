@@ -155,21 +155,22 @@ def build_index_card(name, price, change, chg_pct, href, spark_path, spark_color
     price_str = fmt_price(price)
     change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
     chgp_str = fmt_percent(chg_pct)
-    if change is not None and change != 0:
-        is_up = change > 0
-    elif chg_pct is not None and chg_pct != 0:
-        is_up = chg_pct > 0
-    else:
+    is_flat = (change is None or change == 0) and (chg_pct is None or chg_pct == 0)
+    if is_flat:
         is_up = True
-    # Color convention: 
-    #   A-share/HK: up=red(up class), down=green(down class)
-    #   US: up=green(down class), down=red(up class)
-    if is_us:
-        price_cls = "down" if is_up else "up"
-        change_cls = "down" if is_up else "up"
+        price_cls = "flat"
+        change_cls = "flat"
     else:
-        price_cls = "up" if is_up else "down"
-        change_cls = "up" if is_up else "down"
+        is_up = change > 0 if (change is not None and change != 0) else (chg_pct > 0 if chg_pct is not None else True)
+        # Color convention: 
+        #   A-share/HK: up=red(up class), down=green(down class)
+        #   US: up=green(down class), down=red(up class)
+        if is_us:
+            price_cls = "down" if is_up else "up"
+            change_cls = "down" if is_up else "up"
+        else:
+            price_cls = "up" if is_up else "down"
+            change_cls = "up" if is_up else "down"
     
     if is_vix:
         # VIX card: no sparkline, show fear coefficient instead
@@ -216,6 +217,7 @@ def build_idx_row(report_data, sparklines):
         sc = sparklines.get(f'{key}_color', '#00C853')
         # Swap sparkline color for US indices (data uses A-share convention)
         # VIX excluded: uses its own color (orange up / green down) — don't swap
+        # Flat (grey #6D7175): don't swap
         if is_us and not is_vix and sc in ('#FF4060', '#00C853'):
             # A-share: up=red(#FF4060), down=green(#00C853)
             # US:     up=green(#00C853), down=red(#FF4060)
@@ -281,22 +283,21 @@ def build_tier_table(tier_data, tb_cls='tb-high'):
         cap = stock.get('market_cap', '')
         tag = stock.get('tag', '')
         href = stock.get('href', f'https://www.futunn.com/stock/{sym}-US')
-        if change is not None and change != 0:
-            is_up = change > 0
-        elif chgp is not None and chgp != 0:
-            is_up = chgp > 0
-        else:
+        is_flat = (change is None or change == 0) and (chgp is None or chgp == 0)
+        if is_flat:
             is_up = True
-        
-        # Detect market: numeric symbols = A-share, alphabetic = US
-        is_us_stock = not sym.isdigit() if sym else False
-        price_str = fmt_price(price)
-        change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
-        chgp_str = fmt_percent(chgp)
-        if is_us_stock:
-            p_cls = "down" if is_up else "up"  # US: up=green(down)
+            p_cls = "flat"
         else:
-            p_cls = "up" if is_up else "down"  # A-share: up=red(up)
+            is_up = change > 0 if (change is not None and change != 0) else (chgp > 0 if chgp is not None else True)
+            # Detect market: numeric symbols = A-share, alphabetic = US
+            is_us_stock = not sym.isdigit() if sym else False
+            price_str = fmt_price(price)
+            change_str = f"{'+' if change >= 0 else ''}{change:.2f}" if change else "0.00"
+            chgp_str = fmt_percent(chgp)
+            if is_us_stock:
+                p_cls = "down" if is_up else "up"  # US: up=green(down)
+            else:
+                p_cls = "up" if is_up else "down"  # A-share: up=red(up)
         
         tag_items = ' '.join(f'<span class="tb-tag {tb_cls}">{t.strip()}</span>' for t in tag.split('·') if t.strip()) if tag else ''
         rows.append(f'''<a class="tbl-row" href="{href}" target="_blank">
@@ -672,9 +673,10 @@ def build_report(date_str, template_path, output_path, data_json=None):
     # ============================================================
     _color_errors = []
     
-    # 2a. Check 8 index cards: class="price up/down" + class="change up/down"
+    # 2a. Check 8 index cards: class="price up/down/flat" + class="change up/down/flat"
     # US indices (SPX/NDX/DJI/VIX): up=green(down class), down=red(up class)
     # A-share/HK (SH/SZ/CY/HK): up=red(up class), down=green(down class)
+    # Flat (0 change): flat class (grey)
     _us_idx = {'S&P 500', 'NASDAQ', '道琼斯', 'VIX'}
     _idx_names = ['S&P 500', 'NASDAQ', '道琼斯', 'VIX', '上证指数', '深证成指', '创业板指', '恒生科技']
     for _name in _idx_names:
@@ -683,18 +685,22 @@ def build_report(date_str, template_path, output_path, data_json=None):
             _color_errors.append(f'索引卡[{_name}]: not found in HTML')
             continue
         _chunk = html[_pos:_pos+400]
-        _pc = re.search(r'price (up|down)">([^<]+)', _chunk)
-        _cc = re.search(r'change (up|down)">([^<]+)', _chunk)
+        _pc = re.search(r'price (up|down|flat)">([^<]+)', _chunk)
+        _cc = re.search(r'change (up|down|flat)">([^<]+)', _chunk)
         _pv = float(_pc.group(2).replace(',','')) if _pc else 0
         _cv = _cc.group(2).strip() if _cc else ''
-        _is_up = _cv.startswith('+')
-        if _name in _us_idx:
-            _expected = 'down' if _is_up else 'up'  # US: up=green(down)
-        else:
-            _expected = 'up' if _is_up else 'down'  # A-share: up=red(up)
         _actual = _pc.group(1) if _pc else '?'
-        if _actual != _expected:
-            _color_errors.append(f'索引卡[{_name}]: price class={_actual} expected={_expected} (chg={_cv})')
+        if _actual == 'flat':
+            # flat is always correct
+            pass
+        else:
+            _is_up = _cv.startswith('+')
+            if _name in _us_idx:
+                _expected = 'down' if _is_up else 'up'  # US: up=green(down)
+            else:
+                _expected = 'up' if _is_up else 'down'  # A-share: up=red(up)
+            if _actual != _expected:
+                _color_errors.append(f'索引卡[{_name}]: price class={_actual} expected={_expected} (chg={_cv})')
     
     # 2b. Check commodity prices (4 commodities)
     _commodity_names = ['铜（XCU/USD）', '白银（XAG/USD）', '黄金（XAU/USD）', '原油（WTI/Brent）']
@@ -707,7 +713,7 @@ def build_report(date_str, template_path, output_path, data_json=None):
         if _matches:
             print(f'  📊 com[{_name[:6]}]: price class={_matches[0]}')
     
-    # 2c. Check 30 stock/ETF rows: each <a class="tbl-row"> has chgp up/down
+    # 2c. Check 30 stock/ETF rows: each <a class="tbl-row"> has chgp up/down/flat
     _tier_sections = html.split('<!-- ===== TIER')[1:]
     for _tsec in _tier_sections:
         _rows = _tsec.split('<a class="tbl-row"')[1:]
@@ -717,11 +723,14 @@ def build_report(date_str, template_path, output_path, data_json=None):
             _sym = _sym_m.group(1) if _sym_m else f'row{_ri}'
             _is_us_stock = not _sym.isdigit() if _sym and _sym != f'row{_ri}' else False
             # Extract chgp class
+            _chgp_flat = 'col-chgp flat"' in _row or 'col-chgp flat ' in _row
             _chgp_up = 'chgp up"' in _row or 'chgp up ' in _row
             _chgp_down = 'chgp down"' in _row or 'chgp down ' in _row
             # Determine direction from chg_pct value
             _pct_m = re.search(r'col-chgp[^>]*>([+-]?[\d.]+)', _row)
             _pct_val = float(_pct_m.group(1)) if _pct_m else 0
+            if _pct_val == 0 and _chgp_flat:
+                continue  # flat is always correct
             _is_up = _pct_val >= 0
             if _is_us_stock:
                 _expected = 'down' if _is_up else 'up'  # US: up=green(down)

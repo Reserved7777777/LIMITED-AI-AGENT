@@ -639,8 +639,11 @@ def assemble_output(index_data, date_str=None):
             if minute_prices and len(minute_prices) >= 5:
                 sparklines[key] = gen_sparkline_svg(minute_prices)
                 # Sparkline color matches the index card daily direction, not intraday open
-                is_up_day = (change is not None and change >= 0) or (chg_pct is not None and chg_pct >= 0)
-                if is_vix:
+                is_flat = (change is None or change == 0) and (chg_pct is None or chg_pct == 0)
+                is_up_day = (change is not None and change > 0) or (chg_pct is not None and chg_pct > 0)
+                if is_flat:
+                    sparklines[f'{key}_color'] = '#6D7175'  # flat = grey
+                elif is_vix:
                     # VIX: up=fear=orange, down=calm=green
                     sparklines[f'{key}_color'] = '#FF6900' if is_up_day else '#00C853'
                 else:
